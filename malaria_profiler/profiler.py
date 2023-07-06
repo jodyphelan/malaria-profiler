@@ -27,6 +27,7 @@ def assign_region(snps_report, conf):
 
 
 def add_geobarcode(args):
+    
     if "bam_file" in vars(args):
         bam_class = bam(args.bam_file,prefix=args.files_prefix,platform=args.platform)
         barcode_mutations = bam_class.get_bed_gt(bed_file=args.conf['geo_barcode'],ref_file=args.conf['ref'],caller=args.caller,platform=args.platform)
@@ -36,6 +37,7 @@ def add_geobarcode(args):
     elif args.fasta:
         vcf_class = vcf(f"{args.files_prefix}.vcf.gz",prefix=args.files_prefix)
         barcode_mutations = vcf_class.get_bed_gt(args.conf['geo_barcode'],args.conf['ref'])
+    
     barcode_support,snps_report = get_barcoding_mutations(barcode_mutations,args.conf["geo_barcode"])
     region_result = assign_region(snps_report, args.conf)
     return {'geoclassification':region_result}
