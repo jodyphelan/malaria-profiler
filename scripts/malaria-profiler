@@ -206,6 +206,8 @@ parser = argparse.ArgumentParser(description='malaria-profiler pipeline',formatt
 parser.add_argument('--version', action='version', version="malaria-profiler version %s" % malp.__version__)
 
 parser.add_argument('--no_cleanup',action="store_true",help="Don't remove temporary files on error")
+parser.add_argument('--logging',default="INFO",choices=["DEBUG","INFO","WARNING","ERROR","CRITICAL"],help='Logging level')
+
 subparsers = parser.add_subparsers(help="Task to perform")
 
 
