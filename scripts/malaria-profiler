@@ -239,7 +239,7 @@ output.add_argument('--call_whole_genome',action="store_true",help="Call whole g
 
 filtering=parser_sub.add_argument_group("Variant filtering options")
 filtering.add_argument('--depth',default="0,10",type=str,help='Minimum depth hard and soft cutoff specified as comma separated values')
-filtering.add_argument('--af',default="0,0.1",type=str,help='Minimum allele frequency hard and soft cutoff specified as comma separated values')
+filtering.add_argument('--af',default="0.1,0.4",type=str,help='Minimum allele frequency hard and soft cutoff specified as comma separated values')
 filtering.add_argument('--strand',default="0,3",type=str,help='Minimum read number per strand hard and soft cutoff specified as comma separated values')
 filtering.add_argument('--sv_depth',default="0,10",type=str,help='Structural variant minimum depth hard and soft cutoff specified as comma separated values')
 filtering.add_argument('--sv_af',default="0.5,0.9",type=str,help='Structural variant minimum allele frequency hard cutoff specified as comma separated values')
