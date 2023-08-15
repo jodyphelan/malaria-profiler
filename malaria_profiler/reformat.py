@@ -11,7 +11,10 @@ def reformat(results,conf):
             amplicon2gene = load_bed(conf['bed'],columns=[4,5,7],key1=7)
             for d in results["qc"]["region_qc"]:
                 d["gene_id"] = amplicon2gene[d["region"]][0]
-        results["qc"]["region_qc"] = dict_list_add_genes(results["qc"]["region_qc"],conf)
+            results["qc"]["region_qc"] = dict_list_add_genes(results["qc"]["region_qc"],conf)
+        else:
+            for d in results["qc"]["region_qc"]:
+                d["gene_id"] = d['region']
     if "missing_positions" in results["qc"]:
         results["qc"]["missing_positions"] = reformat_missing_genome_pos(results["qc"]["missing_positions"],conf)
     
