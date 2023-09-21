@@ -1,5 +1,5 @@
 import argparse
-import pathogenprofiler as pp
+from pathogenprofiler import  Bam, Vcf
 from collections import Counter, OrderedDict
 import csv
 
@@ -11,13 +11,13 @@ def get_haplotype(args):
             row = l.strip().split('\t')
             positions[(row[0],int(row[2]))] = 1
         if "bam_file" in vars(args):
-            bam_class = pp.bam(args.bam_file,prefix=args.files_prefix,platform=args.platform)
+            bam_class = Bam(args.bam_file,prefix=args.files_prefix,platform=args.platform)
             mutations = bam_class.get_bed_gt(bed_file=args.conf['geo_barcode'],ref_file=args.conf['ref'],caller=args.caller,platform=args.platform)
         elif args.fasta:
-            vcf_class = pp.vcf(f"{args.files_prefix}.vcf.gz",prefix=args.files_prefix)
+            vcf_class = Vcf(f"{args.files_prefix}.vcf.gz",prefix=args.files_prefix)
             mutations = vcf_class.get_bed_gt(args.conf['geo_barcode'],args.conf['ref'])
         elif "vcf_file" in vars(args):
-            vcf_class = pp.vcf(args.vcf_file,prefix=args.files_prefix)
+            vcf_class = Vcf(args.vcf_file,prefix=args.files_prefix)
             mutations = vcf_class.get_bed_gt(args.conf['geo_barcode'],args.conf['ref'])
         
             
@@ -49,7 +49,7 @@ def get_haplotype(args):
         #print(possible_seqs)
         #print(seq)
         
-        print(args.conf)
+        
         output_rows = []
         for row in csv.DictReader(open("haplotypes.csv")):
             
