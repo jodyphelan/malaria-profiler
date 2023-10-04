@@ -82,11 +82,11 @@ def main_profile(args):
     if args.vcf:
         args.no_species = True
         if not args.resistance_db:
-            pp.errlog(
+            logging.error(
                 "\nSpeciation can't be perfomrmed on a VCF file so a resistance database is needed. "
-                "Specify with --resistance_db or --external_resistance_db\n",
-                ext=True
+                "Specify with --resistance_db or --external_resistance_db\n"
             )
+            quit()
 
 
 
@@ -95,7 +95,7 @@ def main_profile(args):
         "software_version":malp.__version__
     }
     if not args.no_species:
-        species_prediction = pp.speciate(args)
+        species_prediction = pp.kmer_speciate(args)
     else:
         species_prediction = None
     
