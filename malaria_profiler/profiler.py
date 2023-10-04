@@ -27,6 +27,7 @@ def assign_region(snps_report, conf):
 
 
 def add_geobarcode(args):
+    
     if "bam_file" in vars(args):
         bam = Bam(args.bam_file,prefix=args.files_prefix,platform=args.platform)
         barcode_mutations = bam.get_bed_gt(bed_file=args.conf['geo_barcode'],ref_file=args.conf['ref'],caller=args.caller,platform=args.platform)

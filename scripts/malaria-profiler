@@ -124,7 +124,8 @@ def main_profile(args):
     results.update(pp.run_profiler(args))
     if "geo_barcode" in args.conf:
         results.update(malp.add_geobarcode(args))
-
+    if args.haplotype:
+        results.update(malp.get_haplotype(args))
 
     results["pipeline_software"].extend([
         {"Analysis":"Mapping","Program": args.mapper if not args.bam else "N/A"},
@@ -166,6 +167,9 @@ def create_resistance_db(args):
     extra_files = {}
     if os.path.isfile("barcode.bed"):
         extra_files["geo_barcode"] = "barcode.bed"
+    if os.path.isfile("haplotypes.csv"):
+        print(args.conf["species"])
+        extra_files["haplotpyes"] = "haplotypes.csv"
     pp.create_db(args,extra_files)
 
 
@@ -262,6 +266,7 @@ algorithm.add_argument('--no_species',action="store_true",help=argparse.SUPPRESS
 algorithm.add_argument('--add_variant_annotations',action="store_true",help=argparse.SUPPRESS)
 algorithm.add_argument('--threads','-t',default=1,help='Threads to use',type=int)
 algorithm.add_argument('--ram',default=2,help='Max memory to use',type=int)
+algorithm.add_argument('--haplotype','-l', action="store_true",help='Geoclassification via haplotypes')
 
 other=parser_sub.add_argument_group("Other options")
 other.add_argument('--verbose',default=0, choices=[0,1,2],help="Verbosity increases from 0 to 2",type=int)
