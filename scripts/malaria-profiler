@@ -95,7 +95,7 @@ def main_profile(args):
         "software_version":malp.__version__
     }
     if not args.no_species:
-        species_prediction = pp.speciate(args)
+        species_prediction = pp.kmer_speciate(args)
     else:
         species_prediction = None
     
