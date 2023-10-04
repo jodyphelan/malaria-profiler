@@ -153,8 +153,8 @@ def write_text(json_results,conf,outfile,columns = None,sep="\t",template_file=N
     text_strings["qc_fail_var_report"] = pp.dict_list2text(json_results["qc_fail_variants"],mappings=default_columns,sep=sep)
 
     qc_columns = {
-        "gene":"Gene name",
-        "locus_tag":"Locus Tag",
+        "region":"Region",
+        "gene_id":"Gene ID",
         "pct_depth_pass":"% of region with depth >= soft depth cutoff",
         "median_depth":"Median depth"
     }
