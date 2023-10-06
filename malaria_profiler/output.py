@@ -131,7 +131,7 @@ def write_text(json_results,conf,outfile,columns = None,sep="\t",template_file=N
     for var in json_results["dr_variants"]:
         var["drug"] = ", ".join([d["drug"] for d in var["drugs"]])
     if json_results["species"] is not None and len(json_results["species"])>0:
-        text_strings["species_report"] = pp.dict_list2text(json_results["species"]["prediction"],["species","mean"],{"species":"Species","mean":"Mean kmer coverage"},sep=sep)
+        text_strings["species_report"] = pp.dict_list2text(json_results["species"],["species","mean"],{"species":"Species","mean":"Mean kmer coverage"},sep=sep)
     if "geoclassification" in json_results:
         text_strings["geoclassification"] = ", ".join(json_results["geoclassification"])
 
