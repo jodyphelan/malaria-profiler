@@ -98,15 +98,15 @@ def main_profile(args):
     if not args.no_species:
         species_prediction = pp.kmer_speciate(args)
         print(species_prediction)
+        results["species"] =  {
+            "prediction_method": "kmers",
+            "prediction":";".join([d['species'] for d in species_prediction]),
+            "prediction_info":species_prediction,
+            # "species_db_version": args.species_conf["version"]
+        }
     else:
-        species_prediction = None
+        results["species"] = None
     
-    results["species"] =  {
-        "prediction_method": "kmers",
-        "prediction":";".join([d['species'] for d in species_prediction]),
-        "prediction_info":species_prediction,
-        # "species_db_version": args.species_conf["version"]
-    }
 
     
 
@@ -118,8 +118,7 @@ def main_profile(args):
         pp.successlog("Species prediction finished!")
         quit(0)
 
-
-    if args.vcf:
+    if args.resistance_db or args.vcf:
         args.conf = pp.get_db(__softwarename__,args.resistance_db)
     else:
         args.conf = pp.get_resistance_db_from_species_prediction(args,results["species"]["prediction"])
