@@ -226,7 +226,7 @@ def collate(args):
         if "species" in data and data['species']:
             species[s] = ";".join([d["species"] for d in data["species"]["prediction"]])
         else:
-            species = None
+            species[s] = None
         sample_data[s]['region_median_depth'] = data["qc"]["region_median_depth"]
         if "resistance_db_version" in data:
             dr_samples.add(s)
