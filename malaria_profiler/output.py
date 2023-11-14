@@ -172,7 +172,8 @@ def write_text(json_results,conf,outfile,columns = None,sep="\t",template_file=N
     text_strings["missing_report"] = pp.dict_list2text(json_results["qc"]["missing_positions"],missing_columns,sep=sep) if "missing_positions" in json_results["qc"] else "N/A"
     text_strings["pipeline"] = pp.dict_list2text(json_results["pipeline_software"],["Analysis","Program"],sep=sep)
     text_strings["version"] = json_results["software_version"]
-    text_strings["species_db_version"] = "%(name)s_%(Author)s_%(Date)s" % json_results["species"]["species_db_version"] if (json_results['species'] and ("species_db_version" in json_results['species'])) else "N/A"
+    if "species" in json_results:
+        text_strings["species_db_version"] = "%(name)s_%(Author)s_%(Date)s" % json_results["species"]["species_db_version"] if (json_results['species'] and ("species_db_version" in json_results['species'])) else "N/A"
     text_strings["resistance_db_version"] = "%(name)s_%(Author)s_%(Date)s" % json_results["resistance_db_version"] if "resistance_db_version" in json_results else "N/A"
     if sep=="\t":
         text_strings["sep"] = ": "
