@@ -223,7 +223,8 @@ def collate(args):
     for s in tqdm(samples):
         # Data has the same structure as the .result.json files
         data = json.load(open(filecheck("%s/%s%s" % (args.dir,s,args.suffix))))
-        species[s] = ";".join([d["species"] for d in data["species"]["prediction"]])
+        if "species" in data:
+            species[s] = ";".join([d["species"] for d in data["species"]["prediction"]])
         sample_data[s]['region_median_depth'] = data["qc"]["region_median_depth"]
         if "resistance_db_version" in data:
             dr_samples.add(s)
