@@ -136,7 +136,7 @@ def main_profile(args):
     args.conf['variant_filters'] = pp.get_variant_filters(args)
 
     results.update(pp.run_profiler(args))
-    if "geo_barcode" in args.conf:
+    if "geo_barcode" in args.conf and args.bam:
         results.update(malp.add_geobarcode(args))
     if args.haplotype:
         results.update(malp.get_haplotype(args))
