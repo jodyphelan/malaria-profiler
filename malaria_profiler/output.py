@@ -131,7 +131,7 @@ def write_text(json_results,conf,outfile,columns = None,sep="\t",template_file=N
     for var in json_results["dr_variants"]:
         var["drug"] = ", ".join([d["drug"] for d in var["drugs"]])
     if json_results["species"] is not None and len(json_results["species"])>0:
-        text_strings["species_report"] = pp.dict_list2text(json_results["species"]["prediction"],["species","mean"],{"species":"Species","mean":"Mean kmer coverage"},sep=sep)
+        text_strings["species_report"] = pp.dict_list2text(json_results["species"],["species","mean"],{"species":"Species","mean":"Mean kmer coverage"},sep=sep)
     if "geoclassification" in json_results:
         text_strings["geoclassification"] = ", ".join(json_results["geoclassification"])
 
@@ -153,8 +153,8 @@ def write_text(json_results,conf,outfile,columns = None,sep="\t",template_file=N
     text_strings["qc_fail_var_report"] = pp.dict_list2text(json_results["qc_fail_variants"],mappings=default_columns,sep=sep)
 
     qc_columns = {
-        "gene":"Gene name",
-        "locus_tag":"Locus Tag",
+        "region":"Region",
+        "gene_id":"Gene ID",
         "pct_depth_pass":"% of region with depth >= soft depth cutoff",
         "median_depth":"Median depth"
     }
@@ -172,7 +172,8 @@ def write_text(json_results,conf,outfile,columns = None,sep="\t",template_file=N
     text_strings["missing_report"] = pp.dict_list2text(json_results["qc"]["missing_positions"],missing_columns,sep=sep) if "missing_positions" in json_results["qc"] else "N/A"
     text_strings["pipeline"] = pp.dict_list2text(json_results["pipeline_software"],["Analysis","Program"],sep=sep)
     text_strings["version"] = json_results["software_version"]
-    text_strings["species_db_version"] = "%(name)s_%(Author)s_%(Date)s" % json_results["species"]["species_db_version"] if "species_db_version" in json_results['species'] else "N/A"
+    if "species" in json_results:
+        text_strings["species_db_version"] = "%(name)s_%(Author)s_%(Date)s" % json_results["species"]["species_db_version"] if (json_results['species'] and ("species_db_version" in json_results['species'])) else "N/A"
     text_strings["resistance_db_version"] = "%(name)s_%(Author)s_%(Date)s" % json_results["resistance_db_version"] if "resistance_db_version" in json_results else "N/A"
     if sep=="\t":
         text_strings["sep"] = ": "
@@ -222,7 +223,10 @@ def collate(args):
     for s in tqdm(samples):
         # Data has the same structure as the .result.json files
         data = json.load(open(filecheck("%s/%s%s" % (args.dir,s,args.suffix))))
-        species[s] = ";".join([d["species"] for d in data["species"]["prediction"]])
+        if "species" in data and data['species']:
+            species[s] = ";".join([d["species"] for d in data["species"]["prediction"]])
+        else:
+            species[s] = None
         sample_data[s]['region_median_depth'] = data["qc"]["region_median_depth"]
         if "resistance_db_version" in data:
             dr_samples.add(s)

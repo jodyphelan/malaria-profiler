@@ -1,4 +1,4 @@
-name: ntm-profiler
+name: malaria-profiler
 channels:
   - conda-forge
   - bioconda
