@@ -23,7 +23,7 @@ pip install git+https://github.com/jodyphelan/pathogen-profiler.git
 
 ### Input types
 
-NTM-Profiler species prediciton is currently available to run on a fastq, bam, cram, fasta or vcf data. The output is a txt file with the species prediction and if there is a resistance database then it will also output a  list of variants and if they have been associated with drug resistance.
+Malaria-Profiler species prediciton is currently available to run on a fastq, bam, cram, fasta or vcf data. The output is a txt file with the species prediction and if there is a resistance database then it will also output a  list of variants and if they have been associated with drug resistance.
 
 #### Fastq data
 
