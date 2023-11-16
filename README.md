@@ -30,7 +30,7 @@ Malaria-Profiler species prediciton is currently available to run on a fastq, ba
 Raw sequencing data in fastq format can been used as input using the following command. The second read is optional.
 
 ```bash
-malaria-profiler -1 </path/to/reads_1.fq.gz> -2 </path/to/reads_2.fq.gz> -p <sample_name> -t [threads] --txt 
+malaria-profiler profile -1 </path/to/reads_1.fq.gz> -2 </path/to/reads_2.fq.gz> -p <sample_name> -t [threads] --txt 
 ```
 
 #### Bam/Cram 
