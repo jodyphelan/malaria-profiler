@@ -3,8 +3,17 @@
 ## Install
 
 ```
-wget  https://raw.githubusercontent.com/jodyphelan/malaria-profiler/main/env.yml
-conda env create -f env.yml 
+# Run the following depending on your platorm
+
+# linux
+wget  https://raw.githubusercontent.com/jodyphelan/malaria-profiler/main/conda/linux.env.txt
+conda create --name malaria-profiler --file linux.env.txt
+
+# macos
+wget  https://raw.githubusercontent.com/jodyphelan/malaria-profiler/main/conda/macos.env.txt
+conda create --name malaria-profiler --file macos.env.txt
+
+# Then the following commands on all platforms
 conda activate malaria-profiler
 pip install git+https://github.com/jodyphelan/malaria-profiler.git
 pip install git+https://github.com/jodyphelan/pathogen-profiler.git
@@ -15,8 +24,8 @@ malaria-profiler update_db
 
 ```
 conda activate malaria-profiler
-pip install git+https://github.com/jodyphelan/malaria-profiler.git
-pip install git+https://github.com/jodyphelan/pathogen-profiler.git
+pip install --force-reinstall git+https://github.com/jodyphelan/malaria-profiler.git
+pip install --force-reinstall git+https://github.com/jodyphelan/pathogen-profiler.git
 ```
 
 ## Usage
