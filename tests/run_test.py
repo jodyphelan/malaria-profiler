@@ -3,7 +3,10 @@ import pathogenprofiler as pp
 import json
 import os
 
-example = json.load(open("ERR039929.results.json"))
+def extract_mutations(result):
+    return [(d['gene'],d['change']) for d in result["dr_variants"]]
+
+example = extract_mutations(json.load(open("ERR039929.results.json")))
 
 if not os.path.isdir("scratch"):
     os.mkdir("scratch")
@@ -23,8 +26,8 @@ def test_update_library():
 #     assert get_variants(example,"other_variants")== get_variants(result,"other_variants")
 
 def test_profile():
-    run_cmd("malaria-profiler profile -a ~/test_data/ERR039929.bqsr.cram -p ERR039929 -t 3 --txt --csv")
-    result = json.load(open("ERR039929.results.json"))
+    run_cmd("malaria-profiler profile -1 ~/test_data/ERR039929_1.fastq.gz -2 ~/test_data/ERR039929_2.fastq.gz -p ERR039929 -t 3 --txt --csv")
+    result = extract_mutations(json.load(open("ERR039929.results.json")))
     assert result == example
 
 
