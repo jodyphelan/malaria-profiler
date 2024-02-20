@@ -136,7 +136,8 @@ def main_profile(args):
 
     if "geographic_model" in args.conf:
         geo_classification = mp.predict_geographic_source(args)
-
+    else:
+        geo_classification = None
 
     if args.data_source in ('bam','fastq'):
         qc = pp.run_bam_qc(args)

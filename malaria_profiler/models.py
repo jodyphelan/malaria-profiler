@@ -22,7 +22,7 @@ class GeoClassificationResult(BaseModel):
 class ProfileResult(SpeciesResult):
     notes: List[str] = []
     resistance_db: dict = {}
-    geo_classification: GeoClassificationResult
+    geo_classification: Union[GeoClassificationResult, None]
     dr_variants: List[DrVariant] = []
     other_variants: List[Variant] = []
     fail_variants: List[Variant] = []

@@ -56,17 +56,13 @@ def get_barcoding_mutations(args: argparse.Namespace,bed_file:str):
 def predict_geographic_source(args: argparse.Namespace):
 
     gp: Geopredictor = pickle.load(open(args.conf['geographic_model'], 'rb'))
-    print(gp.positions)
-    model_positions = gp.get_positions()
+    model_positions = list(gp.get_positions())
     bed_file = f'{args.files_prefix}.barcode.bed'
     gp.write_bed(bed_file)
     mutations = get_barcoding_mutations(args,bed_file)
-    print(mutations)
     genotype_vector = []
-    print(list(model_positions))
     for chrom,pos,alt in model_positions:
         p = GenomePosition(chrom=chrom,pos=int(pos))
-        print(p)
         if p in mutations:
             if mutations[p].get(alt,0) > 0:
                 genotype_vector.append(1)
@@ -74,6 +70,5 @@ def predict_geographic_source(args: argparse.Namespace):
                 genotype_vector.append(0)
         else:
             genotype_vector.append(0)
-    print(genotype_vector)
     return gp.predict(genotype_vector)
 
