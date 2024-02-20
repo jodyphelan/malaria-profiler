@@ -3,7 +3,7 @@ import re
 import sys
 import argparse
 import uuid
-import malaria_profiler as malp
+import malaria_profiler as mp
 import os
 import pathogenprofiler as pp
 from uuid import uuid4
@@ -16,6 +16,11 @@ from rich_argparse import ArgumentDefaultsRichHelpFormatter
 
 
 __softwarename__ = "malaria_profiler"
+
+def remove_temp_files(prefix):
+    if len(glob.glob(f"{prefix}*"))>0:
+        for f in glob.glob(args.files_prefix+"*"):
+            pp.run_cmd(f"rm -r {f}")
 
 
 @atexit.register
@@ -38,7 +43,7 @@ def cleanup():
         with open(outfile, "w") as O:
             O.write(f"# {args.software_name} error report\n\n")
             O.write("* OS: %s\n" % sys.platform)
-            O.write("* malaria-profiler version: %s\n" % malp.__version__)
+            O.write("* malaria-profiler version: %s\n" % mp.__version__)
             O.write("* pathogen-profiler version: %s\n" % pp.__version__)
             O.write("* Database version: %s\n" % args.conf["version"]["commit"]) if ("conf" in vars(args) and "commit" in args.conf["version"]) else ""
             O.write("* Program call:\n")
@@ -56,7 +61,7 @@ def cleanup():
             O.write("%s" % sys.last_value)
             O.write("```\n")
         logging.error("""\n
-################################# ERROR #######################################
+################################# error #######################################
 
 This run has failed. Please check all arguments and make sure all input files
 exist. If no solution is found, please open up an issue at
@@ -66,91 +71,103 @@ contents of the error log (%s)
 ###############################################################################
 """ % (outfile))
 
+def main_list_db(args):
+    dbs = pp.list_db(args.software_name)
+    for db in dbs:
+        if 'version' in db:
+            d = dict(**db['version'], location=f"{sys.base_prefix}/share/{args.software_name}/{db['version']['name']}")
+            sys.stdout.write("%(name)s\t%(Author)s\t%(Date)s\t%(location)s\n" % d)
 
 
 def main_profile(args):
 
+    pp.process_args(args)
+    mp.process_args(args)
     if args.external_resistance_db:
         args.resistance_db = args.external_resistance_db
     if args.external_species_db:
         args.species_db = args.external_species_db
+
 
     ### Create folders for results if they don't exist ###
     if pp.nofolder(args.dir):
         os.mkdir(args.dir)
 
     if args.vcf:
-        args.no_species = True
+        args.run_species = False
         if not args.resistance_db:
             logging.error(
                 "\nSpeciation can't be perfomrmed on a VCF file so a resistance database is needed. "
-                "Specify with --resistance_db or --external_resistance_db\n"
+                "Specify with --resistance_db or --external_resistance_db\n",
             )
-            quit()
+
+    species_prediction = mp.get_species(args) 
 
 
 
-    results = {
-        "id":args.prefix,
-        "software_version":malp.__version__,
-        "pipeline_software":[],
-    }
-    if not args.no_species:
-        species_prediction = pp.kmer_speciate(args)
-        print(species_prediction)
-        results["species"] =  {
-            "prediction_method": "kmers",
-            "prediction":";".join([d['species'] for d in species_prediction]),
-            "prediction_info":species_prediction,
-            # "species_db_version": args.species_conf["version"]
-        }
-    else:
-        results["species"] = None
+    args.conf = pp.get_resistance_db_from_species_prediction(args,species_prediction)
     
-
-    
-
-    
-    if args.species_only:
-        args.conf = None
-        malp.write_outputs(args,results)
-        pp.run_cmd(f"rm {args.files_prefix}*")
-        pp.successlog("Species prediction finished!")
-        quit(0)
-
-    if args.resistance_db or args.vcf:
-        args.conf = pp.get_db(__softwarename__,args.resistance_db)
-    else:
-        args.conf = pp.get_resistance_db_from_species_prediction(args,results["species"]["prediction"])
-
     if args.conf is None:
-        if results["species"]["prediction"] is None:
-            pp.logging.error("No species prediction was made")
-        malp.write_outputs(args,results)
-        if len(glob.glob(f"{args.files_prefix}*"))>0:
-            pp.run_cmd(f"rm {args.files_prefix}*")
+        if len(species_prediction.species)>0:
+            logging.info("No resistance database found for %s" % species_prediction.species[0].species)
+        else:
+            logging.warning("No species prediction was made")
+        result = mp.create_species_result(args.prefix,species_prediction)
+        mp.write_outputs(args,result)
+        remove_temp_files(args.files_prefix)
         quit(0)
     
-    args = pp.set_platform_params(args)
 
-    args.conf['variant_filters'] = pp.get_variant_filters(args)
-
-    results.update(pp.run_profiler(args))
-    if "geo_barcode" in args.conf and args.bam:
-        results.update(malp.add_geobarcode(args))
-    if args.haplotype:
-        results.update(malp.get_haplotype(args))
-
-    results["pipeline_software"].extend([
-        {"Analysis":"Mapping","Program": args.mapper if not args.bam else "N/A"},
-        {"Analysis":"Variant calling","Program":args.caller}
-    ])
-    results["resistance_db_version"] = args.conf["version"]
-
-    results = malp.reformat(results,args.conf)
-
-    malp.write_outputs(args,results)
     
+
+    
+    pp.process_args(args)
+
+    variants_profile = pp.run_profiler(args)
+    if 'rules' in args.conf:
+        rules_applied = pp.apply_rules(args.conf['rules'], variants_profile)
+    else:
+        rules_applied = []
+
+    # Convert variant objects to DrVariant if they cause resistance
+    for var in variants_profile:
+        var.convert_to_dr_element()
+
+
+    if "geographic_model" in args.conf:
+        geo_classification = mp.predict_geographic_source(args)
+
+
+    if args.data_source in ('bam','fastq'):
+        qc = pp.run_bam_qc(args)
+    elif args.data_source=="fasta":
+        qc = pp.run_fasta_qc(args)
+    else:
+        qc = pp.run_vcf_qc(args)
+
+
+
+
+    notes = []
+    for rule in rules_applied:
+        notes.append(f"Rule applied: {rule}")
+    
+
+
+    result = mp.create_resistance_result(
+        id=args.prefix,
+        species=species_prediction,
+        geo_classification=geo_classification,
+        genetic_elements=variants_profile,
+        qc=qc,
+        notes = notes
+
+    )
+
+
+    
+    # print(summary)
+    mp.write_outputs(args,result)
 
     ### Move files to respective directories ###
     result_files = {
@@ -167,6 +184,84 @@ def main_profile(args):
 
     pp.run_cmd(f"rm {args.files_prefix}*")
 
+
+
+
+
+
+
+    # if not args.no_species:
+    #     species_prediction = pp.kmer_speciate(args)
+    #     print(species_prediction)
+    #     results["species"] =  {
+    #         "prediction_method": "kmers",
+    #         "prediction":";".join([d['species'] for d in species_prediction]),
+    #         "prediction_info":species_prediction,
+    #         # "species_db_version": args.species_conf["version"]
+    #     }
+    # else:
+    #     results["species"] = None
+    
+
+    
+
+    
+    # if args.species_only:
+    #     args.conf = None
+    #     mp.write_outputs(args,results)
+    #     pp.run_cmd(f"rm {args.files_prefix}*")
+    #     pp.successlog("Species prediction finished!")
+    #     quit(0)
+
+    # if args.resistance_db or args.vcf:
+    #     args.conf = pp.get_db(__softwarename__,args.resistance_db)
+    # else:
+    #     args.conf = pp.get_resistance_db_from_species_prediction(args,results["species"]["prediction"])
+
+    # if args.conf is None:
+    #     if results["species"]["prediction"] is None:
+    #         pp.logging.error("No species prediction was made")
+    #     mp.write_outputs(args,results)
+    #     if len(glob.glob(f"{args.files_prefix}*"))>0:
+    #         pp.run_cmd(f"rm {args.files_prefix}*")
+    #     quit(0)
+    
+    # args = pp.set_platform_params(args)
+
+    # args.conf['variant_filters'] = pp.get_variant_filters(args)
+
+    # results.update(pp.run_profiler(args))
+    # if "geo_barcode" in args.conf and args.bam:
+    #     results.update(mp.add_geobarcode(args))
+    # if args.haplotype:
+    #     results.update(mp.get_haplotype(args))
+
+    # results["pipeline_software"].extend([
+    #     {"Analysis":"Mapping","Program": args.mapper if not args.bam else "N/A"},
+    #     {"Analysis":"Variant calling","Program":args.caller}
+    # ])
+    # results["resistance_db_version"] = args.conf["version"]
+
+    # results = mp.reformat(results,args.conf)
+
+    # mp.write_outputs(args,results)
+    
+
+    # ### Move files to respective directories ###
+    # result_files = {
+    #     "%s.delly.bcf" % args.files_prefix: "%s/%s.delly.bcf" % (args.dir,args.prefix),
+    #     "%s.targets.csq.vcf.gz" % args.files_prefix: "%s/%s.targets.csq.vcf.gz" % (args.dir,args.prefix),
+    #     "%s.vcf.gz" % args.files_prefix: "%s/%s.vcf.gz" % (args.dir,args.prefix),
+    #     "%s.bam" % args.files_prefix: "%s/%s.bam" % (args.dir,args.prefix),
+    #     "%s.bam.bai" % args.files_prefix: "%s/%s.bam.bai" % (args.dir,args.prefix),
+    # }
+
+    # for file,target in result_files.items():
+    #     if os.path.isfile(file):
+    #         os.rename(file,target)
+
+    # pp.run_cmd(f"rm {args.files_prefix}*")
+
 def create_species_db(args):
     extra_files = {
         "kmers":args.kmers,
@@ -178,20 +273,17 @@ def load_species_db(args):
 
 def create_resistance_db(args):
     if not os.path.isfile("genome.fasta") and os.path.isfile("genome.fasta.xz"):
-        pp.run_cmd("xz -d genome.fasta.xz")
+        pp.run_cmd("xz -dc genome.fasta.xz > genome.fasta")
     if not os.path.isfile("genome.gff") and os.path.isfile("genome.gff.xz"):
-        pp.run_cmd("xz -d genome.gff.xz")
+        pp.run_cmd("xz -dc genome.gff.xz > genome.gff")
     extra_files = {}
-    if os.path.isfile("barcode.bed"):
-        extra_files["geo_barcode"] = "barcode.bed"
-    if os.path.isfile("haplotypes.csv"):
-        print(args.conf["species"])
-        extra_files["haplotpyes"] = "haplotypes.csv"
+    if args.geo:
+        extra_files['geographic_model'] = args.geo
     pp.create_db(args,extra_files)
 
 
 def main_collate(args):
-    malp.collate(args)
+    mp.collate(args)
 
 
 def main_update_db(args):
@@ -224,10 +316,10 @@ def main_update_db(args):
 #### Argument Parsing ####
 
 parser = argparse.ArgumentParser(description='malaria-profiler pipeline',formatter_class=ArgumentDefaultsRichHelpFormatter)
-parser.add_argument('--version', action='version', version="malaria-profiler version %s" % malp.__version__)
+parser.add_argument('--version', action='version', version="malaria-profiler version %s" % mp.__version__)
 
 parser.add_argument('--no_cleanup',action="store_true",help="Don't remove temporary files on error")
-parser.add_argument('--logging',default="INFO",choices=["DEBUG","INFO","WARNING","ERROR","CRITICAL"],help='Logging level')
+parser.add_argument('--logging',default="info",choices=["DEBUG","INFO","WARNING","ERROR","CRITICAL"],help='Logging level')
 
 subparsers = parser.add_subparsers(help="Task to perform")
 
@@ -276,8 +368,8 @@ algorithm.add_argument('--coverage_fraction_threshold',default=0,type=int,help='
 algorithm.add_argument('--missing_cov_threshold',type=int,help='Cutoff used to positions/codons in genes which are missing (this argument has now been merged with --min_depth argument and will be deprecated in future releases)')
 algorithm.add_argument('--species_only',action="store_true",help="Predict species and quit")
 algorithm.add_argument('--no_trim',action="store_true",help="Don't trim files using trimmomatic")
-algorithm.add_argument('--no_flagstat',action="store_true",help="Don't collect flagstats")
-algorithm.add_argument('--no_clip',action="store_false",help="Don't clip reads")
+algorithm.add_argument('--no_coverage_qc',action="store_true",help="Don't collect flagstats")
+algorithm.add_argument('--no_samclip',action="store_false",help="Don't clip reads")
 algorithm.add_argument('--run_delly',action="store_true",help="Run delly")
 algorithm.add_argument('--no_species',action="store_true",help=argparse.SUPPRESS)
 algorithm.add_argument('--add_variant_annotations',action="store_true",help=argparse.SUPPRESS)
@@ -287,10 +379,10 @@ algorithm.add_argument('--haplotype','-l', action="store_true",help='Geoclassifi
 
 other=parser_sub.add_argument_group("Other options")
 other.add_argument('--verbose',default=0, choices=[0,1,2],help="Verbosity increases from 0 to 2",type=int)
-other.add_argument('--version', action='version', version="Malria-Profiler version %s" % malp.__version__)
+other.add_argument('--version', action='version', version="Malria-Profiler version %s" % mp.__version__)
 other.add_argument('--no_cleanup',action="store_true",help="Don't remove temporary files on error")
 other.add_argument('--delly_vcf',help=argparse.SUPPRESS)
-other.add_argument('--logging',default="INFO",choices=["DEBUG","INFO","WARNING","ERROR","CRITICAL"],help='Logging level')
+other.add_argument('--logging',type=str.upper,default="info",choices=["DEBUG","INFO","WARNING","ERROR","CRITICAL"],help='Logging level')
 
 parser_sub.set_defaults(func=main_profile)
 
@@ -304,8 +396,8 @@ parser_sub.add_argument('--samples',help='File with samples (one per line)')
 parser_sub.add_argument('--dir','-d',default=".",help='Storage directory')
 parser_sub.add_argument('--suffix',default=".results.json",type=str,help='Input results files suffix')
 parser_sub.add_argument('--format',default="txt",choices=["txt","csv"],type=str,help='Output file type')
-parser_sub.add_argument('--version', action='version', version="Malaria-Profiler version %s" % malp.__version__)
-parser_sub.add_argument('--logging',default="INFO",choices=["DEBUG","INFO","WARNING","ERROR","CRITICAL"],help='Logging level')
+parser_sub.add_argument('--version', action='version', version="Malaria-Profiler version %s" % mp.__version__)
+parser_sub.add_argument('--logging',type=str.upper,default="info",choices=["DEBUG","INFO","WARNING","ERROR","CRITICAL"],help='Logging level')
 parser_sub.set_defaults(func=main_collate)
 
 
@@ -314,9 +406,9 @@ parser_sub.set_defaults(func=main_collate)
 # Update database #
 parser_sub = subparsers.add_parser('update_db', help='Update all databases', formatter_class=ArgumentDefaultsRichHelpFormatter)
 parser_sub.add_argument('--branch','-b',default="main",help='Storage directory')
-parser_sub.add_argument('--version', action='version', version="malaria-profiler version %s" % malp.__version__)
+parser_sub.add_argument('--version', action='version', version="malaria-profiler version %s" % mp.__version__)
 parser_sub.add_argument('--dir','-d',default=".",help='Storage directory')
-parser_sub.add_argument('--logging',default="INFO",choices=["DEBUG","INFO","WARNING","ERROR","CRITICAL"],help='Logging level')
+parser_sub.add_argument('--logging',type=str.upper,default="info",choices=["DEBUG","INFO","WARNING","ERROR","CRITICAL"],help='Logging level')
 parser_sub.set_defaults(func=main_update_db)
 
 
@@ -326,6 +418,7 @@ parser_sub.set_defaults(func=main_update_db)
 parser_sub = subparsers.add_parser('create_resistance_db', help='Generate the files required to run resistance profiling with malaria-profiler', formatter_class=ArgumentDefaultsRichHelpFormatter)
 parser_sub.add_argument('--prefix','-p',type=str,help='The name of the database (match species name for automated speciation+resistance detection)',required = True)
 parser_sub.add_argument('--csv','-c',type=str,help='The CSV file containing mutations')
+parser_sub.add_argument('--geo',type=str,help='A geographic source classification model')
 parser_sub.add_argument('--load',action="store_true",help='Load the library after creating it')
 parser_sub.add_argument('--watchlist','-w',type=str,help='A csv file containing genes to profile but without any specific associated mutations')
 parser_sub.add_argument('--match_ref',type=str,help='The prefix for all output files')
@@ -338,8 +431,8 @@ parser_sub.add_argument('--db-author',help='Overrides the author of the database
 parser_sub.add_argument('--db-date',help='Overrides the date of the database in the version file')
 parser_sub.add_argument('--include_original_mutation',action="store_true", help='Include the original mutation (before reformatting) as part of the variant annotaion')
 parser_sub.add_argument('--dir','-d',default=".",help='Storage directory')
-parser_sub.add_argument('--version', action='version', version="malaria-profiler version %s" % malp.__version__)
-parser_sub.add_argument('--logging',default="INFO",choices=["DEBUG","INFO","WARNING","ERROR","CRITICAL"],help='Logging level')
+parser_sub.add_argument('--version', action='version', version="malaria-profiler version %s" % mp.__version__)
+parser_sub.add_argument('--logging',type=str.upper,default="info",choices=["DEBUG","INFO","WARNING","ERROR","CRITICAL"],help='Logging level')
 parser_sub.set_defaults(func=create_resistance_db)
 
 parser_sub = subparsers.add_parser('create_species_db', help='Generate the files required to run speciation with malaria-profiler', formatter_class=ArgumentDefaultsRichHelpFormatter)
@@ -351,16 +444,22 @@ parser_sub.add_argument('--db-commit',help='Overrides the commit string of the d
 parser_sub.add_argument('--db-author',help='Overrides the author of the database in the version file')
 parser_sub.add_argument('--db-date',help='Overrides the date of the database in the version file')
 parser_sub.add_argument('--dir','-d',default=".",help='Storage directory')
-parser_sub.add_argument('--version', action='version', version="malaria-profiler version %s" % malp.__version__)
-parser_sub.add_argument('--logging',default="INFO",choices=["DEBUG","INFO","WARNING","ERROR","CRITICAL"],help='Logging level')
+parser_sub.add_argument('--version', action='version', version="malaria-profiler version %s" % mp.__version__)
+parser_sub.add_argument('--logging',type=str.upper,default="info",choices=["DEBUG","INFO","WARNING","ERROR","CRITICAL"],help='Logging level')
 parser_sub.set_defaults(func=create_species_db)
 
-
+parser_sub = subparsers.add_parser('list_db', help='List loaded databases', formatter_class=ArgumentDefaultsRichHelpFormatter)
+parser_sub.add_argument('--dir','-d',default=".",help='Storage directory')
+parser_sub.add_argument('--no_clean', action='store_true',help=argparse.SUPPRESS)
+parser_sub.add_argument('--temp',help="Temp firectory to process all files",type=str,default=".")
+parser_sub.add_argument('--version', action='version', version="tb-profiler version %s" % mp.__version__)
+parser_sub.add_argument('--logging',type=str.upper,default="INFO",choices=["DEBUG","INFO","WARNING","ERROR","CRITICAL"],help='Logging level')
+parser_sub.set_defaults(func=main_list_db)
 
 args = parser.parse_args()
 
 logging.basicConfig(
-    level=args.logging, format="%(message)s", datefmt="[%X]", handlers=[RichHandler()]
+    level=args.logging.upper(), format="%(message)s", datefmt="[%X]", handlers=[RichHandler()]
 )
 
 if hasattr(args, 'func'):
