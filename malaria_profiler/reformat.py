@@ -19,6 +19,9 @@ def split_variants(
             fail_variants.append(var)
     return dr_variants,other_variants,fail_variants
 
+def filter_missing_positions(missing_positions: List[str]) -> List[str]:
+    return [ann for ann in missing_positions if len(ann['annotation'])>0]
+
 def create_resistance_result(
     id: str,
     species: SpeciesPrediction,
@@ -29,6 +32,10 @@ def create_resistance_result(
 ) -> ProfileResult:
     for var in genetic_elements:
         var.convert_to_dr_element()
+    
+    if hasattr(qc, 'missing_positions'):
+        qc.missing_positions = filter_missing_positions(qc.missing_positions)
+
     dr_variants, other_variants, fail_variants = split_variants(genetic_elements)
     data = {
         'id':id,
