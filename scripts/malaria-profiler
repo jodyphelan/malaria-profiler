@@ -360,7 +360,7 @@ filtering.add_argument('--sv_af',default="0.5,0.9",type=str,help='Structural var
 filtering.add_argument('--sv_len',default="100000,50000",type=str,help='Structural variant maximum size hard and soft cutoff specified as comma separated values')
 
 algorithm=parser_sub.add_argument_group("Algorithm options")
-algorithm.add_argument('--mapper',default="bwa", choices=["bwa","minimap2","bowtie2","bwa-mem2"],help="Mapping tool to use. If you are using nanopore data it will default to minimap2",type=str)
+algorithm.add_argument('--mapper',default="bwa", choices=["bwa","minimap2","bowtie2","bwa-mem2","bwa-meme"],help="Mapping tool to use. If you are using nanopore data it will default to minimap2",type=str)
 algorithm.add_argument('--caller',default="freebayes", choices=["bcftools","gatk","freebayes"],help="Variant calling tool to use.",type=str)
 algorithm.add_argument('--kmer_counter',default="kmc", choices=["kmc","dsk"],help="Kmer counting tool to use.",type=str)
 algorithm.add_argument('--calling_params',type=str,help='Override default parameters for variant calling')
@@ -379,6 +379,7 @@ algorithm.add_argument('--ram',default=2,help='Max memory to use',type=int)
 algorithm.add_argument('--haplotype','-l', action="store_true",help='Geoclassification via haplotypes')
 
 other=parser_sub.add_argument_group("Other options")
+other.add_argument('--supplementary_bam',help=argparse.SUPPRESS)
 other.add_argument('--verbose',default=0, choices=[0,1,2],help="Verbosity increases from 0 to 2",type=int)
 other.add_argument('--version', action='version', version="Malria-Profiler version %s" % mp.__version__)
 other.add_argument('--no_cleanup',action="store_true",help="Don't remove temporary files on error")
