@@ -10,7 +10,8 @@ from tqdm import tqdm
 import json
 import jinja2
 import logging
-from .models import ProfileResult
+from .models import ProfileResult, SpeciesResult
+from typing import Optional, List, Tuple
 
 
 def write_outputs(args,result: ProfileResult):
@@ -248,7 +249,7 @@ def write_species_text(json_results,outfile,sep="\t",template_file=None):
 
 
 
-def collate(args):
+def _collate(args):
     # Get a dictionary with the database file: {"ref": "/path/to/fasta" ... etc. }
     
     if args.samples:
@@ -305,3 +306,111 @@ def collate(args):
         writer = csv.DictWriter(O,fieldnames=list(results[0]),delimiter=args.sep)
         writer.writeheader()
         writer.writerows(results)
+
+class VariantDB:
+    def __init__(self, json_db: Optional[dict] = None):
+        self.samples2variants = defaultdict(set)
+        self.variant2samples = defaultdict(set)
+        self.variant_frequencies = {}
+        self.samples = list()
+        self.variant_rows = []
+        if json_db:
+            for gene in json_db:
+                for mutation in json_db[gene]:
+                        self.variant2samples[(gene,mutation)] = set()
+
+    def add_result(self, result: ProfileResult) -> None:
+        self.samples.append(result.id)
+        for var in result.dr_variants + result.other_variants:
+            key = (result.id,var.gene_name,var.change)
+            self.variant_frequencies[key] = var.freq
+            key = (var.gene_name,var.change)
+            self.variant2samples[key].add(result.id)
+            self.samples2variants[result.id].add(key)
+            d = var.model_dump()
+            d['sample'] = result.id
+            self.variant_rows.append(d)
+    def get_frequency(self,key: Tuple[str,str,str]) -> float:
+        return self.variant_frequencies.get(key,0.0)
+    def get_variant_list(self) -> List[Tuple[str,str]]:
+        return list(self.variant2samples.keys())
+    def write_dump(self,filename: str) -> None:
+        with open(filename,"w") as O:
+            fields = ["sample","gene_name","change","freq","type"]
+            writer = csv.DictWriter(O,fieldnames=fields)
+            writer.writeheader()
+            for row in self.variant_rows:
+                d = {k:row[k] for k in fields}
+                writer.writerow(d)
+
+def collate(args):
+    # Get a dictionary with the database file: {"ref": "/path/to/fasta" ... etc. }
+    
+    if args.samples:
+        samples = [x.rstrip() for x in open(args.samples).readlines()]
+    else:
+        samples = [x.replace(args.suffix,"") for x in os.listdir(args.dir) if x[-len(args.suffix):]==args.suffix]
+
+    if len(samples)==0:
+        pp.logging.info(f"\nNo result files found in directory '{args.dir}'. Do you need to specify '--dir'?\n")
+        quit(0)
+
+    # Loop through the sample result files    
+    variant_db = VariantDB()
+    rows = []
+    drug_resistance_results = []
+    for s in tqdm(samples):
+        # Data has the same structure as the .result.json files
+        data = json.load(open(filecheck("%s/%s%s" % (args.dir,s,args.suffix))))
+        if data['result_type']=='Species':
+            result = SpeciesResult(**data)
+        else:
+            result = ProfileResult(**data)
+        row = {
+            'id': s
+        }
+        
+        top_species_hit = result.species.species[0] if len(result.species.species)>0 else None
+        if top_species_hit:
+            row['species'] =  top_species_hit.species
+        else:
+            row['species'] =  None
+            row['closest-sequence'] = None
+            row['ANI'] = None
+        if isinstance(result, ProfileResult):
+            variant_db.add_result(result)
+            row['barcode'] = [x.region for x in sorted(result.geo_classification.probabilities,key=lambda x:x.probability,reverse=True)][0]
+            
+            for var in result.dr_variants:
+                for d in var.drugs:
+                    drug_resistance_results.append({
+                        'id': s,
+                        'drug': d['drug'],
+                        'var': var.get_str(),
+                    })
+                    
+
+        rows.append(row) 
+
+
+
+    drugs = sorted(list(set([x['drug'] for x in drug_resistance_results])))
+
+
+    for row in rows:
+        for drug in drugs:
+            row[drug] = "; ".join([x['var'] for x in drug_resistance_results if x['id']==row['id'] and x['drug']==drug])
+
+
+    
+    if args.format=="txt":
+        args.sep = "\t"
+    else:
+        args.sep = ","
+
+    with open(args.outfile,"w") as O:
+        writer = csv.DictWriter(O,fieldnames=list(rows[0]),delimiter=args.sep,extrasaction='ignore')
+        writer.writeheader()
+        writer.writerows(rows)
+
+    variant_db.write_dump(args.outfile + ".variants.csv")
