@@ -267,7 +267,7 @@ def collate(args):
         # Data has the same structure as the .result.json files
         data = json.load(open(filecheck("%s/%s%s" % (args.dir,s,args.suffix))))
         if "species" in data and data['species']:
-            species[s] = ";".join([d["species"] for d in data["species"]["prediction"]])
+            species[s] = ";".join([d["species"] for d in data["species"]["species"]])
         else:
             species[s] = None
         sample_data[s]['region_median_depth'] = data["qc"]["region_median_depth"]
