@@ -20,13 +20,13 @@ class GeoClassificationResult(BaseModel):
     probabilities: List[GeoClassificationProbability]
 
 class ProfileResult(SpeciesResult):
+    resistance_db: dict
     notes: List[str] = []
-    resistance_db: dict = {}
+    qc: Union[BamQC, FastaQC, VcfQC]
     geo_classification: Union[GeoClassificationResult, None]
     dr_variants: List[DrVariant] = []
     other_variants: List[Variant] = []
     fail_variants: List[Variant] = []
-    qc: Union[BamQC, FastaQC, VcfQC]
     result_type: str = 'Profile'
 
     def get_qc(self):
