@@ -28,7 +28,6 @@ def create_resistance_result(
     notes: List[str]
 ) -> ProfileResult:
     for var in genetic_elements:
-        print(var)
         var.convert_to_dr_element()
     dr_variants, other_variants, fail_variants = split_variants(genetic_elements)
     data = {
@@ -39,6 +38,7 @@ def create_resistance_result(
         'other_variants':other_variants,
         'fail_variants':fail_variants,
         'species':species,
+        'resistance_db':{}
     }
     return ProfileResult(**data, qc=qc)
 
