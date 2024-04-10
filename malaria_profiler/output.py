@@ -270,7 +270,7 @@ def collate(args):
             species[s] = ";".join([d["species"] for d in data["species"]["species"]])
         else:
             species[s] = None
-        sample_data[s]['region_median_depth'] = data["qc"]["region_median_depth"]
+        sample_data[s]['target_median_depth'] = data["qc"]["target_median_depth"]
         if "resistance_db_version" in data:
             dr_samples.add(s)
         
@@ -284,7 +284,7 @@ def collate(args):
         result = {
             "id": s,
             "species": species[s],
-            "region_median_depth": sample_data[s]['region_median_depth']
+            "target_median_depth": sample_data[s]['target_median_depth']
         }
         for d in sorted(drugs):
             if s in dr_samples:
