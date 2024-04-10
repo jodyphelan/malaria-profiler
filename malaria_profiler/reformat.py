@@ -20,7 +20,7 @@ def split_variants(
     return dr_variants,other_variants,fail_variants
 
 def filter_missing_positions(missing_positions: List[str]) -> List[str]:
-    return [ann for ann in missing_positions if len(ann['annotation'])>0]
+    return [ann for ann in missing_positions if len(ann.annotation)>0]
 
 def create_resistance_result(
     id: str,
