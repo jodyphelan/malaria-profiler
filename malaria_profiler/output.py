@@ -11,6 +11,7 @@ import json
 import jinja2
 import logging
 from .models import ProfileResult, SpeciesResult
+from pathogenprofiler.models import BamQC
 from typing import Optional, List, Tuple
 
 
@@ -359,6 +360,7 @@ def collate(args):
     variant_db = VariantDB()
     rows = []
     drug_resistance_results = []
+    drug_missing_variants = defaultdict(set)
     for s in tqdm(samples):
         # Data has the same structure as the .result.json files
         data = json.load(open(filecheck("%s/%s%s" % (args.dir,s,args.suffix))))
@@ -375,12 +377,14 @@ def collate(args):
             row['species'] =  top_species_hit.species
         else:
             row['species'] =  None
-            row['closest-sequence'] = None
-            row['ANI'] = None
         if isinstance(result, ProfileResult):
             variant_db.add_result(result)
-            row['barcode'] = [x.region for x in sorted(result.geo_classification.probabilities,key=lambda x:x.probability,reverse=True)][0]
-            
+            row['geographic_source'] = [x.region for x in sorted(result.geo_classification.probabilities,key=lambda x:x.probability,reverse=True)][0]
+            row['geographic_source_proba'] = [round(x.probability,2) for x in sorted(result.geo_classification.probabilities,key=lambda x:x.probability,reverse=True)][0]
+            if isinstance(result.qc, BamQC):
+                row['median_target_depth'] = result.qc.target_median_depth
+            else:
+                row['median_target_depth'] = None
             for var in result.dr_variants:
                 for d in var.drugs:
                     drug_resistance_results.append({
@@ -388,10 +392,17 @@ def collate(args):
                         'drug': d['drug'],
                         'var': var.get_str(),
                     })
-                    
 
+            for var in result.qc.missing_positions:
+                for ann in var.annotation:
+                    if ann["type"]=="drug_resistance":
+                        drug_missing_variants[s].add(ann['drug'])
+
+            row['missing_positions'] = True if len(drug_missing_variants[s]) else False
         rows.append(row) 
 
+    
+    
 
 
     drugs = sorted(list(set([x['drug'] for x in drug_resistance_results])))
@@ -400,6 +411,8 @@ def collate(args):
     for row in rows:
         for drug in drugs:
             row[drug] = "; ".join([x['var'] for x in drug_resistance_results if x['id']==row['id'] and x['drug']==drug])
+            if drug in drug_missing_variants[row['id']]:
+                row[drug] = "*"+row[drug]
 
 
     
