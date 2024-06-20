@@ -265,9 +265,10 @@ def main_profile(args):
 
 def create_species_db(args):
     extra_files = {
-        "kmers":args.kmers,
+        "sourmash_db":args.sourmash_db,
+        "sourmash_db_info":args.accessions
     }
-    pp.create_species_db(args,extra_files=extra_files)
+    pp.create_species_db(args,extra_files = extra_files)
 
 def load_species_db(args):
     pp.load_species_db(args)
@@ -296,20 +297,24 @@ def main_update_db(args):
         pp.run_cmd('git clone https://github.com/jodyphelan/malaria-db.git')
         os.chdir('malaria-db/db/')
         pp.run_cmd(f'git checkout {args.branch}')
-    dirs = [d for d in os.listdir() if os.path.isdir(d)]
-    logging.info('\nCreating species DB\n')
-    pp.run_cmd('malaria-profiler create_species_db -p plasmodium --kmers malaria.kmers.txt --load')
+
+    pp.logging.info('\nCreating species DB')
+    os.chdir('species')
+    pp.run_cmd('malaria-profiler create_species_db -p malaria-db --sourmash_db plasmodium.sbt.zip --accessions species_info.csv --load')
+    os.chdir('../')
+    
+    dirs = [d for d in os.listdir() if os.path.isdir(d) and d!="species"]
     for d in dirs:
         os.chdir(d)
         variables = json.load(open('variables.json'))
         if "enabled" in variables and variables["enabled"]==False: 
             os.chdir('../')
             continue
-        species = variables["species"]
-        logging.info(f'\nCreating DB for {species}')
-        csv_arg = f"--csv variants.csv" if os.path.isfile("variants.csv") else ""
-        geo_arg = f"--geo geographic_model.pkl" if os.path.isfile(f"geographic_model.pkl") else ""
-        pp.run_cmd(f'malaria-profiler create_resistance_db --prefix {species.replace(" ","_")} {geo_arg} {csv_arg} --watchlist gene_watchlist.csv --load')
+        for species in variables['species']:
+            logging.info(f'\nCreating DB for {species}')
+            csv_arg = f"--csv variants.csv" if os.path.isfile("variants.csv") else ""
+            geo_arg = f"--geo geographic_model.pkl" if os.path.isfile(f"geographic_model.pkl") else ""
+            pp.run_cmd(f'malaria-profiler create_resistance_db --prefix {species.replace(" ","_")} {geo_arg} {csv_arg} --watchlist gene_watchlist.csv --load')
         os.chdir('../')
 
 
@@ -439,7 +444,8 @@ parser_sub.set_defaults(func=create_resistance_db)
 
 parser_sub = subparsers.add_parser('create_species_db', help='Generate the files required to run speciation with malaria-profiler', formatter_class=ArgumentDefaultsRichHelpFormatter)
 parser_sub.add_argument('--prefix','-p',type=str,help='The name of the database',required = True)
-parser_sub.add_argument('--kmers',type=str,help='The file containing species specific kmers',required = True)
+parser_sub.add_argument('--sourmash_db',type=str,help='The file containing species sourmash',required = True)
+parser_sub.add_argument('--accessions',type=str,help='The file containing map from accessions to species',required = True)
 parser_sub.add_argument('--load',action="store_true",help='Load the library after creating it')
 parser_sub.add_argument('--db-name',help='Overrides the name of the database in the version file')
 parser_sub.add_argument('--db-commit',help='Overrides the commit string of the database in the version file')
