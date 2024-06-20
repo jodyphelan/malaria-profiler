@@ -294,6 +294,7 @@ def main_update_db(args):
         # pp.run_cmd('git pull')
         os.chdir('db/')
     else:
+        logging.info('\nCloning malaria-db')
         pp.run_cmd('git clone https://github.com/jodyphelan/malaria-db.git')
         os.chdir('malaria-db/db/')
         pp.run_cmd(f'git checkout {args.branch}')
