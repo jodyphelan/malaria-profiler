@@ -311,11 +311,11 @@ def main_update_db(args):
         if "enabled" in variables and variables["enabled"]==False: 
             os.chdir('../')
             continue
-        for species in variables['species']:
-            logging.info(f'\nCreating DB for {species}')
-            csv_arg = f"--csv variants.csv" if os.path.isfile("variants.csv") else ""
-            geo_arg = f"--geo geographic_model.pkl" if os.path.isfile(f"geographic_model.pkl") else ""
-            pp.run_cmd(f'malaria-profiler create_resistance_db --prefix {species.replace(" ","_")} {geo_arg} {csv_arg} --watchlist gene_watchlist.csv --load')
+        species = json.load(open('variables.json'))['species']
+        logging.info(f'\nCreating DB for {species}')
+        csv_arg = f"--csv variants.csv" if os.path.isfile("variants.csv") else ""
+        geo_arg = f"--geo geographic_model.pkl" if os.path.isfile(f"geographic_model.pkl") else ""
+        pp.run_cmd(f'malaria-profiler create_resistance_db --prefix {species.replace(" ","_")} {geo_arg} {csv_arg} --watchlist gene_watchlist.csv --load')
         os.chdir('../')
 
 

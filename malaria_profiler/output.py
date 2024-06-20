@@ -48,10 +48,10 @@ Species report
 -----------------
 {{d['species_report']}}
 
-{%- if 'geoclassification' in d %}
+{%- if 'geographic_report' in d %}
 Geoclassification report
 -----------------
-{{d['geoclassification']}}
+{{d['geographic_report']}}
 {% endif %}
 
 {% if  'dr_report' in d %}
@@ -148,6 +148,7 @@ def write_text(
         text_strings["dr_var_report"] = pp.object_list2text(result.dr_variants,mappings={"pos":"Genome Position","gene_id":"Locus Tag",'gene_name':'Gene name',"type":"Variant type","change":"Change","freq":"Estimated fraction","drugs.drug":"Drug"},sep=sep)
         text_strings["other_var_report"] = pp.object_list2text(result.other_variants,mappings={"pos":"Genome Position","gene_id":"Locus Tag",'gene_name':'Gene name',"type":"Variant type","change":"Change","freq":"Estimated fraction"},sep=sep)
         text_strings['qc_fail_var_report'] = pp.object_list2text(result.fail_variants,mappings={"pos":"Genome Position","gene_id":"Locus Tag",'gene_name':'Gene name',"type":"Variant type","change":"Change","freq":"Estimated fraction"},sep=sep)
+        text_strings["geographic_report"] = pp.object_list2text(result.geo_classification.probabilities,mappings={"region":"Region","probability":"Probability"},sep=sep)
         text_strings["coverage_report"] = result.get_qc()
 
     else:
