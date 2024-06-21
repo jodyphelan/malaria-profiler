@@ -3,8 +3,14 @@ from pathogenprofiler.models import SpeciesPrediction, DrVariant, Variant, BamQC
 from typing import List, Union
 from pathogenprofiler import object_list2text
 
+class Pipeline(BaseModel):
+    software_version: str
+    db_version: dict
+    software: List[dict]
+
 class Result(BaseModel):
     id: str
+    pipeline: Pipeline
 
 class SpeciesResult(Result):
     species: SpeciesPrediction
@@ -20,7 +26,6 @@ class GeoClassificationResult(BaseModel):
     probabilities: List[GeoClassificationProbability]
 
 class ProfileResult(SpeciesResult):
-    resistance_db: dict
     notes: List[str] = []
     qc: Union[BamQC, FastaQC, VcfQC]
     geo_classification: Union[GeoClassificationResult, None]

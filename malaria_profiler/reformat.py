@@ -1,6 +1,8 @@
 from pathogenprofiler.models import SpeciesPrediction, Variant, BamQC, FastaQC, DrVariant, Variant
 from typing import List, Union, Tuple
-from .models import ProfileResult, GeoClassificationResult
+from .models import ProfileResult, GeoClassificationResult, Pipeline
+from pathogenprofiler.utils import shared_dict
+import argparse
 
 def split_variants(
     variants: List[Variant]
@@ -23,6 +25,7 @@ def filter_missing_positions(missing_positions: List[str]) -> List[str]:
     return [ann for ann in missing_positions if len(ann.annotation)>0]
 
 def create_resistance_result(
+    args: argparse.Namespace,
     id: str,
     species: SpeciesPrediction,
     geo_classification: GeoClassificationResult,
@@ -36,6 +39,12 @@ def create_resistance_result(
     if hasattr(qc, 'missing_positions'):
         qc.missing_positions = filter_missing_positions(qc.missing_positions)
 
+    pipeline = Pipeline(
+        software_version=args.version,
+        db_version=args.conf['version'],
+        software=[{'process':k,'software':v} for k,v in shared_dict.items()]
+    )
+
     dr_variants, other_variants, fail_variants = split_variants(genetic_elements)
     data = {
         'id':id,
@@ -45,28 +54,8 @@ def create_resistance_result(
         'other_variants':other_variants,
         'fail_variants':fail_variants,
         'species':species,
-        'resistance_db':{}
+        'pipeline':pipeline,
     }
     return ProfileResult(**data, qc=qc)
 
 
-
-# def reformat(results,conf):
-#     results["variants"] = [x for x in results["variants"] if len(x["consequences"])>0]
-#     results["variants"] = select_csq(results["variants"])
-#     results["variants"] = dict_list_add_genes(results["variants"],conf)
-#     results = reformat_annotations(results,conf)
-
-#     if "region_qc" in results["qc"]:
-#         if conf['amplicon']==True:
-#             amplicon2gene = load_bed(conf['bed'],columns=[4,5,7],key1=7)
-#             for d in results["qc"]["region_qc"]:
-#                 d["gene_id"] = amplicon2gene[d["region"]][0]
-#             results["qc"]["region_qc"] = dict_list_add_genes(results["qc"]["region_qc"],conf)
-#         else:
-#             for d in results["qc"]["region_qc"]:
-#                 d["gene_id"] = d['region']
-#     if "missing_positions" in results["qc"]:
-#         results["qc"]["missing_positions"] = reformat_missing_genome_pos(results["qc"]["missing_positions"],conf)
-    
-#     return results

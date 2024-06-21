@@ -156,6 +156,7 @@ def main_profile(args):
 
 
     result = mp.create_resistance_result(
+        args=args,
         id=args.prefix,
         species=species_prediction,
         geo_classification=geo_classification,
@@ -473,6 +474,7 @@ logging.basicConfig(
 
 if hasattr(args, 'func'):
     args.software_name = __softwarename__
+    args.version = mp.__version__
     args.tmp_prefix = str(uuid4())
     args.files_prefix = args.dir+"/"+args.tmp_prefix
     args.func(args)
