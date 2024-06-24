@@ -84,7 +84,7 @@ Analysis pipeline specifications
 --------------------------------
 Pipeline version{{d['sep']}}{{d['version']}}
 Species Database version{{d['sep']}}{{d['species_db_version']}}
-Resistance Database version{{d['sep']}}{{d['resistance_db_version']}}
+Resistance Database version{{d['sep']}}{{d['db_version']}}
 
 {{d['pipeline']}}
 """
@@ -220,7 +220,7 @@ def _write_text(json_results,conf,outfile,columns = None,sep="\t",template_file=
     text_strings["version"] = json_results["software_version"]
     if "species" in json_results:
         text_strings["species_db_version"] = "%(name)s_%(Author)s_%(Date)s" % json_results["species"]["species_db_version"] if (json_results['species'] and ("species_db_version" in json_results['species'])) else "N/A"
-    text_strings["resistance_db_version"] = "%(name)s_%(Author)s_%(Date)s" % json_results["resistance_db_version"] if "resistance_db_version" in json_results else "N/A"
+    text_strings["db_version"] = "%(name)s_%(Author)s_%(Date)s" % json_results["db_version"] if "db_version" in json_results else "N/A"
     if sep=="\t":
         text_strings["sep"] = ": "
     else:
@@ -274,7 +274,7 @@ def _collate(args):
         else:
             species[s] = None
         sample_data[s]['target_median_depth'] = data["qc"]["target_median_depth"]
-        if "resistance_db_version" in data:
+        if "db_version" in data:
             dr_samples.add(s)
         
             for var in data["dr_variants"]:
