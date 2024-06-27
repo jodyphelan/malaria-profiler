@@ -290,16 +290,21 @@ def main_collate(args):
 
 
 def main_update_db(args):
-    if os.path.isdir('malaria-db'):
-        os.chdir('malaria-db')
-        # pp.run_cmd('git pull')
+    dirname = args.repo.split("/")[-1].replace(".git","")
+    if os.path.isdir(dirname):
+        logging.debug(f"Directory {dirname} exists, pulling latest version")
+        os.chdir(dirname)
+        pp.run_cmd('git pull')
         os.chdir('db/')
     else:
-        logging.info('\nCloning malaria-db')
-        pp.run_cmd('git clone https://github.com/jodyphelan/malaria-db.git')
-        os.chdir('malaria-db/db/')
+        logging.debug(f"Directory {dirname} does not exist, cloning repo")
+        pp.run_cmd(f'git clone {args.repo}')
+        os.chdir(f'{dirname}/db/')
         pp.run_cmd(f'git checkout {args.branch}')
 
+    if args.commit:
+        pp.run_cmd(f"git checkout {args.commit}")
+        
     pp.logging.info('\nCreating species DB')
     os.chdir('species')
     pp.run_cmd('malaria-profiler create_species_db -p malaria-db --sourmash_db plasmodium.sbt.zip --accessions species_info.csv --load')
@@ -414,7 +419,9 @@ parser_sub.set_defaults(func=main_collate)
 
 # Update database #
 parser_sub = subparsers.add_parser('update_db', help='Update all databases', formatter_class=ArgumentDefaultsRichHelpFormatter)
+parser_sub.add_argument('--repo','-r',default="https://github.com/pathogen-profiler/malaria-db.git",help='Repository to pull from')
 parser_sub.add_argument('--branch','-b',default="main",help='Storage directory')
+parser_sub.add_argument('--commit','-c',help='Git commit hash to checkout (default: latest)')
 parser_sub.add_argument('--version', action='version', version="malaria-profiler version %s" % mp.__version__)
 parser_sub.add_argument('--dir','-d',default=".",help='Storage directory')
 parser_sub.add_argument('--logging',type=str.upper,default="info",choices=["DEBUG","INFO","WARNING","ERROR","CRITICAL"],help='Logging level')
