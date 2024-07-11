@@ -1,7 +1,8 @@
 from pathogenprofiler.models import SpeciesPrediction, Variant, BamQC, FastaQC, DrVariant, Variant
 from typing import List, Union, Tuple
-from .models import ProfileResult, GeoClassificationResult, Pipeline
+from .models import ProfileResult, GeoClassificationResult, Pipeline, SpeciesResult
 from pathogenprofiler.utils import shared_dict
+from pathogenprofiler import get_db
 import argparse
 
 def split_variants(
@@ -59,3 +60,21 @@ def create_resistance_result(
     return ProfileResult(**data, qc=qc)
 
 
+def create_species_result(
+    args: argparse.Namespace,
+    id: str,
+    species: SpeciesPrediction,
+    
+) -> SpeciesResult:
+    args.conf = get_db(args.software_name,args.species_db)
+    pipeline = Pipeline(
+        software_version=args.version,
+        db_version=args.conf['version'],
+        software=[{'process':k,'software':v} for k,v in shared_dict.items()]
+    )
+    data = {
+        'id':id,
+        'species':species,
+        'pipeline':pipeline,
+    }
+    return SpeciesResult(**data)
