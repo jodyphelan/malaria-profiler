@@ -83,6 +83,11 @@ def main_profile(args):
 
     pp.process_args(args)
     mp.process_args(args)
+    
+    #### Temp fix ####
+    args.no_delly = True
+    
+
     if args.external_resistance_db:
         args.resistance_db = args.external_resistance_db
     if args.external_species_db:
