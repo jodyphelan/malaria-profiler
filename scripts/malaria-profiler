@@ -327,7 +327,7 @@ def main_update_db(args):
         csv_arg = f"--csv variants.csv" if os.path.isfile("variants.csv") else ""
         geo_arg = f"--geo geographic_model.pkl" if os.path.isfile(f"geographic_model.pkl") else ""
         print(species)
-        pp.run_cmd(f'malaria-profiler create_resistance_db --prefix {species[0].replace(" ","_")} {geo_arg} {csv_arg} --watchlist gene_watchlist.csv --load')
+        pp.run_cmd(f'malaria-profiler create_resistance_db --prefix {species.replace(" ","_")} {geo_arg} {csv_arg} --watchlist gene_watchlist.csv --load')
         os.chdir('../')
 
 
