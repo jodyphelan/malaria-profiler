@@ -119,7 +119,7 @@ def main_profile(args):
         else:
             logging.warning("No species prediction was made")
         result = mp.create_species_result(args,args.prefix,species_prediction)
-        mp.write_outputs(args,result)
+        mp.write_outputs(args, result, filename=get_input_filename(args))
         remove_temp_files(args.files_prefix)
         quit(0)
     
@@ -175,7 +175,7 @@ def main_profile(args):
 
     
     # print(summary)
-    mp.write_outputs(args,result)
+    mp.write_outputs(args, result, filename=get_input_filename(args))
 
     ### Move files to respective directories ###
     result_files = {
@@ -193,7 +193,17 @@ def main_profile(args):
     pp.run_cmd(f"rm {args.files_prefix}*")
 
 
-
+def get_input_filename(args):
+    if args.read1:
+        return os.path.basename(args.read1)
+    elif args.bam:
+        return os.path.basename(args.bam)
+    elif args.fasta:
+        return os.path.basename(args.fasta)
+    elif args.vcf:
+        return os.path.basename(args.vcf)
+    else:
+        return "unknown"
 
 
 
@@ -328,7 +338,7 @@ def main_update_db(args):
         csv_arg = f"--csv variants.csv" if os.path.isfile("variants.csv") else ""
         geo_arg = f"--geo geographic_model.pkl" if os.path.isfile(f"geographic_model.pkl") else ""
         print(species)
-        pp.run_cmd(f'malaria-profiler create_resistance_db --prefix {species.replace(" ","_")} {geo_arg} {csv_arg} --watchlist gene_watchlist.csv --load')
+        pp.run_cmd(f'malaria-profiler create_resistance_db --prefix {species[0].replace(" ","_")} {geo_arg} {csv_arg} --watchlist gene_watchlist.csv --load')
         os.chdir('../')
 
 
