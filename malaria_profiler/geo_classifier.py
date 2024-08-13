@@ -78,6 +78,7 @@ def predict_geographic_source(args: argparse.Namespace):
 
     prediction = gp.predict(genotype_vector)
     fraction_missing = sum(missing_vector)/len(missing_vector)
+    prediction.fraction_genotyped = 1-fraction_missing
     if fraction_missing > args.max_barcode_missing:
         prediction = GeoClassificationResult(
             classifier_name=gp.name,
@@ -85,7 +86,5 @@ def predict_geographic_source(args: argparse.Namespace):
             probabilities=[],
             fraction_genotyped=1-fraction_missing
         )
-    else:
-        prediction.fraction_genotyped = 1-fraction_missing
     return prediction
 
