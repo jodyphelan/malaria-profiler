@@ -397,7 +397,7 @@ algorithm.add_argument('--no_species',action="store_true",help=argparse.SUPPRESS
 algorithm.add_argument('--add_variant_annotations',action="store_true",help=argparse.SUPPRESS)
 algorithm.add_argument('--threads','-t',default=1,help='Threads to use',type=int)
 algorithm.add_argument('--ram',default=2,help='Max memory to use',type=int)
-algorithm.add_argument('--haplotype','-l', action="store_true",help='Geoclassification via haplotypes')
+algorithm.add_argument('--max_barcode_missing',default=0.1,type=float,help='Maximum fraction of missing genotypes for geoclassification')
 
 other=parser_sub.add_argument_group("Other options")
 other.add_argument('--supplementary_bam',help=argparse.SUPPRESS)

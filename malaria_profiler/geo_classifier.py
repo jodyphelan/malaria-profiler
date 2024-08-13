@@ -61,8 +61,13 @@ def predict_geographic_source(args: argparse.Namespace):
     gp.write_bed(bed_file)
     mutations = get_barcoding_mutations(args,bed_file)
     genotype_vector = []
+    missing_vector = []
     for chrom,pos,alt in model_positions:
         p = GenomePosition(chrom=chrom,pos=int(pos))
+        if sum(mutations[p].values()) < args.conf['variant_filters']['depth_soft']:
+            missing_vector.append(1)
+        else:
+            missing_vector.append(0)
         if p in mutations:
             if mutations[p].get(alt,0) > 0:
                 genotype_vector.append(1)
@@ -70,5 +75,17 @@ def predict_geographic_source(args: argparse.Namespace):
                 genotype_vector.append(0)
         else:
             genotype_vector.append(0)
-    return gp.predict(genotype_vector)
+
+    prediction = gp.predict(genotype_vector)
+    fraction_missing = sum(missing_vector)/len(missing_vector)
+    if fraction_missing > args.max_barcode_missing:
+        prediction = GeoClassificationResult(
+            classifier_name=gp.name,
+            classifier_version=gp.version,
+            probabilities=[],
+            fraction_genotyped=1-fraction_missing
+        )
+    else:
+        prediction.fraction_genotyped = 1-fraction_missing
+    return prediction
 

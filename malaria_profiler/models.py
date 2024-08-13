@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 from pathogenprofiler.models import SpeciesPrediction, DrVariant, Variant, BamQC, FastaQC, VcfQC
-from typing import List, Union
+from typing import List, Union, Optional
 from pathogenprofiler import object_list2text
 
 class Pipeline(BaseModel):
@@ -24,6 +24,7 @@ class GeoClassificationResult(BaseModel):
     classifier_name: str
     classifier_version: str
     probabilities: List[GeoClassificationProbability]
+    fraction_genotyped: Optional[float] = None
 
 class ProfileResult(SpeciesResult):
     notes: List[str] = []
