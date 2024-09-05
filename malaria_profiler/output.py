@@ -15,14 +15,18 @@ from pathogenprofiler.models import BamQC
 from typing import Optional, List, Tuple
 
 
-def write_outputs(args,result: ProfileResult):
+def write_outputs(args,result: ProfileResult,filename:str):
     logging.info("\nWriting outputs")
     logging.info("---------------")
     json_output = args.dir+"/"+args.prefix+".results.json"
     text_output = args.dir+"/"+args.prefix+".results.txt"
     csv_output = args.dir+"/"+args.prefix+".results.csv"
     logging.info(f"Writing json file: {json_output}")
-    open(json_output,"w").write(result.model_dump_json(indent=4))
+
+    result_dict = result.model_dump()
+    result_dict['filename'] = filename 
+    with open(json_output, "w") as json_file:
+        json.dump(result_dict, json_file, indent=4)
 
     if args.txt:
         logging.info(f"Writing text file: {text_output}")
@@ -43,6 +47,7 @@ Summary
 -------
 ID{{d['sep']}}{{d['id']}}
 Date{{d['sep']}}{{d['date']}}
+Filename{{d['sep']}}{{d['filename']}}
 
 Species report
 -----------------
@@ -99,6 +104,7 @@ Summary
 -------
 ID{{d['sep']}}{{d['id']}}
 Date{{d['sep']}}{{d['date']}}
+Filename{{d['sep']}}{{d['filename']}}
 
 Species report
 -----------------
@@ -125,11 +131,13 @@ def write_text(
         conf: dict,
         outfile: str,
         sep: str ="\t",
-        template_file: str = None
+        template_file: str = None,
+        filename: str = ""
     ):
     text_strings = {}
     text_strings["id"] = result.id
     text_strings["date"] = time.ctime()
+    text_strings["filename"] = filename 
     if result.species.prediction_method=='user_defined':
         text_strings['species_report'] = f'User defined species: {result.species.species[0].species}'
     else:
