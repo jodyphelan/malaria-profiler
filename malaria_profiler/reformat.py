@@ -1,4 +1,4 @@
-from pathogenprofiler.models import SpeciesPrediction, Variant, BamQC, FastaQC, DrVariant, Variant
+from pathogenprofiler.models import SpeciesPrediction, Variant, BamQC, FastaQC, DrVariant, Variant, FastqQC
 from typing import List, Union, Tuple
 from .models import ProfileResult, GeoClassificationResult, Pipeline, SpeciesResult
 from pathogenprofiler.utils import shared_dict
@@ -64,6 +64,7 @@ def create_species_result(
     args: argparse.Namespace,
     id: str,
     species: SpeciesPrediction,
+    qc: Union[FastqQC, FastaQC]
     
 ) -> SpeciesResult:
     args.conf = get_db(args.software_name,args.species_db)
@@ -75,6 +76,7 @@ def create_species_result(
     data = {
         'id':id,
         'species':species,
+        'qc':qc,
         'pipeline':pipeline,
     }
     return SpeciesResult(**data)

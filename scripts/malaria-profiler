@@ -120,7 +120,16 @@ def main_profile(args):
             logging.info("No resistance database found for %s" % species_prediction.species[0].species)
         else:
             logging.warning("No species prediction was made")
-        result = mp.create_species_result(args,args.prefix,species_prediction)
+
+        if args.bam:
+            args.read1 = args.temp_fastq_file
+        if args.bam or args.data_source == 'fastq':
+            qc = pp.get_fastq_qc(args)
+        elif args.data_source=="fasta":
+            qc = pp.run_fasta_qc(args)
+        else:
+            qc = pp.run_vcf_qc(args)
+        result = mp.create_species_result(args,args.prefix,species_prediction,qc)
         mp.write_outputs(args, result, filename=get_input_filename(args))
         remove_temp_files(args.files_prefix)
         quit(0)
@@ -210,77 +219,6 @@ def get_input_filename(args):
 
 
 
-    # if not args.no_species:
-    #     species_prediction = pp.kmer_speciate(args)
-    #     print(species_prediction)
-    #     results["species"] =  {
-    #         "prediction_method": "kmers",
-    #         "prediction":";".join([d['species'] for d in species_prediction]),
-    #         "prediction_info":species_prediction,
-    #         # "species_db_version": args.species_conf["version"]
-    #     }
-    # else:
-    #     results["species"] = None
-    
-
-    
-
-    
-    # if args.species_only:
-    #     args.conf = None
-    #     mp.write_outputs(args,results)
-    #     pp.run_cmd(f"rm {args.files_prefix}*")
-    #     pp.successlog("Species prediction finished!")
-    #     quit(0)
-
-    # if args.resistance_db or args.vcf:
-    #     args.conf = pp.get_db(__softwarename__,args.resistance_db)
-    # else:
-    #     args.conf = pp.get_resistance_db_from_species_prediction(args,results["species"]["prediction"])
-
-    # if args.conf is None:
-    #     if results["species"]["prediction"] is None:
-    #         pp.logging.error("No species prediction was made")
-    #     mp.write_outputs(args,results)
-    #     if len(glob.glob(f"{args.files_prefix}*"))>0:
-    #         pp.run_cmd(f"rm {args.files_prefix}*")
-    #     quit(0)
-    
-    # args = pp.set_platform_params(args)
-
-    # args.conf['variant_filters'] = pp.get_variant_filters(args)
-
-    # results.update(pp.run_profiler(args))
-    # if "geo_barcode" in args.conf and args.bam:
-    #     results.update(mp.add_geobarcode(args))
-    # if args.haplotype:
-    #     results.update(mp.get_haplotype(args))
-
-    # results["pipeline_software"].extend([
-    #     {"Analysis":"Mapping","Program": args.mapper if not args.bam else "N/A"},
-    #     {"Analysis":"Variant calling","Program":args.caller}
-    # ])
-    # results["resistance_db_version"] = args.conf["version"]
-
-    # results = mp.reformat(results,args.conf)
-
-    # mp.write_outputs(args,results)
-    
-
-    # ### Move files to respective directories ###
-    # result_files = {
-    #     "%s.delly.bcf" % args.files_prefix: "%s/%s.delly.bcf" % (args.dir,args.prefix),
-    #     "%s.targets.csq.vcf.gz" % args.files_prefix: "%s/%s.targets.csq.vcf.gz" % (args.dir,args.prefix),
-    #     "%s.vcf.gz" % args.files_prefix: "%s/%s.vcf.gz" % (args.dir,args.prefix),
-    #     "%s.bam" % args.files_prefix: "%s/%s.bam" % (args.dir,args.prefix),
-    #     "%s.bam.bai" % args.files_prefix: "%s/%s.bam.bai" % (args.dir,args.prefix),
-    # }
-
-    # for file,target in result_files.items():
-    #     if os.path.isfile(file):
-    #         os.rename(file,target)
-
-    # pp.run_cmd(f"rm {args.files_prefix}*")
 
 def create_species_db(args):
     extra_files = {

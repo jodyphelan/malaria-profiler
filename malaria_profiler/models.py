@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from pathogenprofiler.models import SpeciesPrediction, DrVariant, Variant, BamQC, FastaQC, VcfQC
+from pathogenprofiler.models import SpeciesPrediction, DrVariant, Variant, BamQC, FastaQC, VcfQC, FastqQC
 from typing import List, Union, Optional
 from pathogenprofiler import object_list2text
 
@@ -15,6 +15,7 @@ class Result(BaseModel):
 class SpeciesResult(Result):
     species: SpeciesPrediction
     result_type: str = 'Species'
+    qc: Union[FastqQC,FastaQC]
 
 class GeoClassificationProbability(BaseModel):
     region: str
