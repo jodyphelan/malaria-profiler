@@ -6,8 +6,8 @@ import argparse
 import pandas as pd
 
 argparser = argparse.ArgumentParser(description='Run multiple samples in parallel')
-argparser.add_argument('--input_directory', help='Directory containing fastq files',required = True)
-argparser.add_argument('--output_directory', help='Directory containing fastq files',required = True)
+argparser.add_argument('--input-dir', help='Directory containing fastq files',required = True)
+argparser.add_argument('--output-dir', help='Directory containing fastq files',required = True)
 argparser.add_argument('--experiment-id', help='Directory containing fastq files')
 
 args = argparser.parse_args()
@@ -38,10 +38,10 @@ def load_seqkit_stats(file):
 
 
 if not args.experiment_id:
-    args.experiment_id = args.input_directory.replace('/','_')
+    args.experiment_id = args.input_dir.replace('/','_')
 
 final_data = []
-for barcode, directory in find_bardode_directories(args.input_directory):
+for barcode, directory in find_bardode_directories(args.input_dir):
     print(barcode, directory)
     run_id = f'{args.experiment_id}_{barcode}'
     collate_fastq_files(directory)
@@ -52,9 +52,9 @@ for barcode, directory in find_bardode_directories(args.input_directory):
     }
     stats.update(load_seqkit_stats(f'{directory}/stats.txt'))
     final_data.append(stats)
-    run_cmd(f'malaria-profiler profile -1 {directory}/all.fastq.gz --resistance_db vivax_amplicon --dir {args.output_directory} -p {run_id} --platform nanopore --caller bcftools')
+    run_cmd(f'malaria-profiler profile -1 {directory}/all.fastq.gz --resistance_db vivax_amplicon --dir {args.output_dir} -p {run_id} --platform nanopore --caller bcftools')
 
 df = pd.DataFrame(final_data)
-df.to_csv(f'{args.output_directory}/{args.experiment_id}.fastq_stats.csv',index=False)
+df.to_csv(f'{args.output_dir}/{args.experiment_id}.fastq_stats.csv',index=False)
 
 

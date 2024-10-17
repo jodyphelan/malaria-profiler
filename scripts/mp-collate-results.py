@@ -19,6 +19,7 @@ parser.add_argument('--out',type=str,help='File with samples',required = True)
 parser.add_argument('--samples',type=str,help='File with samples')
 parser.add_argument('--dir',default=".",type=str,help='Directory containing results')
 parser.add_argument('--suffix',default=".results.json",type=str,help='File suffix')
+parser.add_argument('--min-depth',default=10,type=int,help='Minimum depth to pass')
 
 args = parser.parse_args()
 
@@ -95,12 +96,12 @@ for s in samples:
                 "nucleotide_change": v['nucleotide_change'],
                 "protein_change": v['protein_change'],
                 "depth": depth[gpos][s],
-                "freq": 1,
+                "freq": 0,
                 "forward_reads": None,
                 "reverse_reads": None,
-                "filter":'reference',
-                "type": 'reference',
-                "genotype": 0,
+                "filter":'reference' if int(depth[gpos][s]) >= args.min_depth else 'depth_fail',
+                "type": v['type'],
+                "genotype": 0 if int(depth[gpos][s]) >= args.min_depth else 'NA',
             })
 
 df = pd.DataFrame(variant_rows)
