@@ -11,6 +11,8 @@ setuptools.setup(
 	license="GPLv3",
 	long_description="Malaria-Profiler command line tool",
 	scripts= [
-		'scripts/malaria-profiler'
+		'scripts/malaria-profiler',
+        'scripts/mp-analyse-nanopore-vivax-amplicons.py',
+        'scripts/mp-collate-results.py'
 		],
 )
