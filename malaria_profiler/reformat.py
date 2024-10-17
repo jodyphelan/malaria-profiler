@@ -25,6 +25,13 @@ def split_variants(
 def filter_missing_positions(missing_positions: List[str]) -> List[str]:
     return [ann for ann in missing_positions if len(ann.annotation)>0]
 
+def load_amplicon_target_names(bed_file:str) -> List[str]:
+    names = []
+    for l in  open(bed_file,'r'):
+        row = l.strip().split('\t')
+        names.append(row[6])
+    return names 
+
 def create_resistance_result(
     args: argparse.Namespace,
     id: str,
@@ -45,6 +52,13 @@ def create_resistance_result(
         db_version=args.conf['version'],
         software=[{'process':k,'software':v} for k,v in shared_dict.items()]
     )
+
+    if 'amplicon' in args.conf and args.conf['amplicon']==True:
+        amplicon_target_names = load_amplicon_target_names(args.conf['bed'])
+        print(amplicon_target_names)
+        print(len(qc.target_qc))
+        for i,name in enumerate(amplicon_target_names):
+            qc.target_qc[i].target = name
 
     dr_variants, other_variants, fail_variants = split_variants(genetic_elements)
     data = {
