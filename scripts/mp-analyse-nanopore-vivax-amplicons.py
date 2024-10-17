@@ -1,3 +1,4 @@
+#! /usr/bin/env python
 from pathogenprofiler import run_cmd
 from glob import glob
 import os
