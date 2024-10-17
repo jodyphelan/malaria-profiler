@@ -191,7 +191,7 @@ def main_profile(args):
     ### Move files to respective directories ###
     result_files = {
         "%s.delly.bcf" % args.files_prefix: "%s/%s.delly.bcf" % (args.dir,args.prefix),
-        "%s.targets.csq.vcf.gz" % args.files_prefix: "%s/%s.targets.csq.vcf.gz" % (args.dir,args.prefix),
+        "%s.targets_for_profile.csq.vcf.gz" % args.files_prefix: "%s/%s.targets_for_profile.csq.vcf.gz" % (args.dir,args.prefix),
         "%s.vcf.gz" % args.files_prefix: "%s/%s.vcf.gz" % (args.dir,args.prefix),
         "%s.bam" % args.files_prefix: "%s/%s.bam" % (args.dir,args.prefix),
         "%s.bam.bai" % args.files_prefix: "%s/%s.bam.bai" % (args.dir,args.prefix),
