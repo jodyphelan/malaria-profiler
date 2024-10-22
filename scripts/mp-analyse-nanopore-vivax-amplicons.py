@@ -48,7 +48,7 @@ def get_fastq_files(directory):
     files =  glob(f'{directory}/*.fastq*')
     results = []
     for f in files:
-        r = re.search('barcode(\d+)',f)
+        r = re.search(r'barcode(\d+)',f)
         if r:
             results.append((r.group(1),f))
     return results
