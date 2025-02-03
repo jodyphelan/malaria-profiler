@@ -4,6 +4,23 @@ import json
 import argparse
 from pathogenprofiler.models import SpeciesPrediction
 
+
+def get_full_resistance_mutation_report(args: argparse.Namespace, variants: list) -> list:
+    variants = {(v.gene_id,v.change):v for v in variants}
+    full_variant_report = []
+    for gene in args.conf['json_db']:
+        for var in args.conf['json_db'][gene]:
+            found = True if (gene,var) in variants else False
+            full_variant_report.append({
+                "gene":gene,
+                "variant":var,
+                "found":found,
+                "depth":variants[(gene,var)].depth if found else 0,
+            })
+    print(full_variant_report)
+    quit()
+    
+
 def process_args(args: argparse.Namespace) -> None:
     args.no_delly = False if args.run_delly else True
 

@@ -53,11 +53,17 @@ Species report
 -----------------
 {{d['species_report']}}
 
-{%- if 'geographic_report' in d %}
+{% if 'geographic_report' in d %}
 Geoclassification report
 -----------------
 {{d['geographic_report']}}
 {% endif %}
+
+{%- if 'moi' in d %}
+Multiplicity of infection report
+-----------------
+Estimated multiplicity of infection: {{d['moi']}}
+{% endif -%}
 
 {% if  'dr_report' in d %}
 Resistance report
@@ -158,6 +164,8 @@ def write_text(
         text_strings['qc_fail_var_report'] = pp.object_list2text(result.fail_variants,mappings={"pos":"Genome Position","gene_id":"Locus Tag",'gene_name':'Gene name',"type":"Variant type","change":"Change","freq":"Estimated fraction"},sep=sep)
         if result.geo_classification!=None:
             text_strings["geographic_report"] = pp.object_list2text(result.geo_classification.probabilities,mappings={"region":"Region","probability":"Probability"},sep=sep)
+        if result.moi!=None:
+            text_strings["moi"] = result.moi['moi']
         text_strings["coverage_report"] = result.get_qc()
 
     else:

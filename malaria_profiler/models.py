@@ -31,6 +31,7 @@ class ProfileResult(SpeciesResult):
     notes: List[str] = []
     qc: Union[BamQC, FastaQC, VcfQC]
     geo_classification: Union[GeoClassificationResult, None]
+    moi: Union[dict, None]
     dr_variants: List[DrVariant] = []
     other_variants: List[Variant] = []
     fail_variants: List[Variant] = []

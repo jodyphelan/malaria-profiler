@@ -17,6 +17,7 @@ import pathogenprofiler.variant_calling as vc
 
 
 __softwarename__ = "malaria_profiler"
+__default_data_dir__ = f'{sys.base_prefix}/share/{__softwarename__}/'
 
 def remove_temp_files(prefix):
     if len(glob.glob(f"{prefix}*"))>0:
@@ -73,11 +74,17 @@ contents of the error log (%s)
 """ % (outfile))
 
 def main_list_db(args):
-    dbs = pp.list_db(args.software_name)
+    dbs = pp.list_db(args.db_dir)
     for db in dbs:
-        if 'version' in db:
-            d = dict(**db['version'], location=f"{sys.base_prefix}/share/{args.software_name}/{db['version']['name']}")
-            sys.stdout.write("%(name)s\t%(Author)s\t%(Date)s\t%(location)s\n" % d)
+        obj = {
+            'name': db['version'].get('name'),
+            'location': f"{args.db_dir}/{db['version']['name']}",
+            'commit': db['version'].get('commit'),
+            'author': db['version'].get('Author'),
+            'date': db['version'].get('Date')
+        }
+
+        sys.stdout.write("%(name)s\t%(commit)s\t%(author)s\t%(date)s\t%(location)s\n" % obj)
 
 
 def main_profile(args):
@@ -111,7 +118,7 @@ def main_profile(args):
 
 
     if args.resistance_db:
-        args.conf = pp.get_db(args.software_name,args.resistance_db,verbose=False)
+        args.conf = pp.get_db(args.db_dir,args.resistance_db,verbose=False)
     else:
         args.conf = pp.get_resistance_db_from_species_prediction(args,species_prediction)
     
@@ -134,7 +141,6 @@ def main_profile(args):
         remove_temp_files(args.files_prefix)
         quit(0)
     
-
     
 
     
@@ -155,6 +161,13 @@ def main_profile(args):
         geo_classification = mp.predict_geographic_source(args)
     else:
         geo_classification = None
+
+    if "moi_regions" in args.conf:
+        moi = mp.get_moi(args)
+    else:
+        moi = None
+
+    mp.get_full_resistance_mutation_report(args,variants_profile)
 
     if args.data_source in ('bam','fastq'):
         qc = pp.run_bam_qc(args)
@@ -177,6 +190,7 @@ def main_profile(args):
         id=args.prefix,
         species=species_prediction,
         geo_classification=geo_classification,
+        moi=moi,
         genetic_elements=variants_profile,
         qc=qc,
         notes = notes
@@ -225,7 +239,7 @@ def create_species_db(args):
         "sourmash_db":args.sourmash_db,
         "sourmash_db_info":args.accessions
     }
-    pp.create_species_db(args,extra_files = extra_files)
+    pp.create_species_db(args,extra_files = extra_files,db_dir=args.db_dir)
 
 def load_species_db(args):
     pp.load_species_db(args)
@@ -238,6 +252,8 @@ def create_resistance_db(args):
     extra_files = {}
     if args.geo:
         extra_files['geographic_model'] = args.geo
+    if args.moi_regions:
+        extra_files['moi_regions'] = args.moi_regions
     pp.create_db(args,extra_files)
 
 
@@ -349,6 +365,7 @@ algorithm.add_argument('--max_barcode_missing',default=0.1,type=float,help='Maxi
 
 other=parser_sub.add_argument_group("Other options")
 other.add_argument('--supplementary_bam',help=argparse.SUPPRESS)
+other.add_argument('--db_dir',type=os.path.abspath,default=__default_data_dir__,help='Storage directory')
 other.add_argument('--verbose',default=0, choices=[0,1,2],help="Verbosity increases from 0 to 2",type=int)
 other.add_argument('--version', action='version', version="Malria-Profiler version %s" % mp.__version__)
 other.add_argument('--no_cleanup',action="store_true",help="Don't remove temporary files on error")
@@ -365,6 +382,7 @@ parser_sub = subparsers.add_parser('collate', help='Collate results form multipl
 parser_sub.add_argument('--outfile','-o',default="malaria-profiler.collate.txt",help='Sample prefix')
 parser_sub.add_argument('--samples',help='File with samples (one per line)')
 parser_sub.add_argument('--dir','-d',default=".",help='Storage directory')
+parser_sub.add_argument('--db_dir',type=os.path.abspath,default=__default_data_dir__,help='Storage directory')
 parser_sub.add_argument('--suffix',default=".results.json",type=str,help='Input results files suffix')
 parser_sub.add_argument('--format',default="txt",choices=["txt","csv"],type=str,help='Output file type')
 parser_sub.add_argument('--version', action='version', version="Malaria-Profiler version %s" % mp.__version__)
@@ -380,6 +398,7 @@ parser_sub.add_argument('--repo','-r',default="https://github.com/pathogen-profi
 parser_sub.add_argument('--branch','-b',default="main",help='Storage directory')
 parser_sub.add_argument('--commit','-c',help='Git commit hash to checkout (default: latest)')
 parser_sub.add_argument('--version', action='version', version="malaria-profiler version %s" % mp.__version__)
+parser_sub.add_argument('--db_dir',type=os.path.abspath,default=__default_data_dir__,help='Storage directory')
 parser_sub.add_argument('--dir','-d',default=".",help='Storage directory')
 parser_sub.add_argument('--logging',type=str.upper,default="info",choices=["DEBUG","INFO","WARNING","ERROR","CRITICAL"],help='Logging level')
 parser_sub.set_defaults(func=main_update_db)
@@ -397,6 +416,7 @@ parser_sub.add_argument('--watchlist','-w',type=str,help='A csv file containing 
 parser_sub.add_argument('--match_ref',type=str,help='The prefix for all output files')
 parser_sub.add_argument('--other_annotations',type=str,help='The prefix for all output files')
 parser_sub.add_argument('--amplicon_primers',type=str,help='A file containing a list of amplicon primers')
+parser_sub.add_argument('--moi_regions','--moi-regions',type=str,help='A BED file containing a list of regions to use for MOI estimation')
 parser_sub.add_argument('--custom',action="store_true",help='Tells the script this is a custom database, this is used to alter the generation of the version file')
 parser_sub.add_argument('--db-name',help='Overrides the name of the database in the version file')
 parser_sub.add_argument('--db-commit',help='Overrides the commit string of the database in the version file')
@@ -404,6 +424,7 @@ parser_sub.add_argument('--db-author',help='Overrides the author of the database
 parser_sub.add_argument('--db-date',help='Overrides the date of the database in the version file')
 parser_sub.add_argument('--include_original_mutation',action="store_true", help='Include the original mutation (before reformatting) as part of the variant annotaion')
 parser_sub.add_argument('--dir','-d',default=".",help='Storage directory')
+parser_sub.add_argument('--db_dir',type=os.path.abspath,default=__default_data_dir__,help='Storage directory')
 parser_sub.add_argument('--version', action='version', version="malaria-profiler version %s" % mp.__version__)
 parser_sub.add_argument('--logging',type=str.upper,default="info",choices=["DEBUG","INFO","WARNING","ERROR","CRITICAL"],help='Logging level')
 parser_sub.set_defaults(func=create_resistance_db)
@@ -418,6 +439,7 @@ parser_sub.add_argument('--db-commit',help='Overrides the commit string of the d
 parser_sub.add_argument('--db-author',help='Overrides the author of the database in the version file')
 parser_sub.add_argument('--db-date',help='Overrides the date of the database in the version file')
 parser_sub.add_argument('--dir','-d',default=".",help='Storage directory')
+parser_sub.add_argument('--db_dir',type=os.path.abspath,default=__default_data_dir__,help='Storage directory')
 parser_sub.add_argument('--version', action='version', version="malaria-profiler version %s" % mp.__version__)
 parser_sub.add_argument('--logging',type=str.upper,default="info",choices=["DEBUG","INFO","WARNING","ERROR","CRITICAL"],help='Logging level')
 parser_sub.set_defaults(func=create_species_db)
@@ -426,6 +448,7 @@ parser_sub = subparsers.add_parser('list_db', help='List loaded databases', form
 parser_sub.add_argument('--dir','-d',default=".",help='Storage directory')
 parser_sub.add_argument('--no_clean', action='store_true',help=argparse.SUPPRESS)
 parser_sub.add_argument('--temp',help="Temp firectory to process all files",type=str,default=".")
+parser_sub.add_argument('--db_dir',type=os.path.abspath,default=__default_data_dir__,help='Storage directory')
 parser_sub.add_argument('--version', action='version', version="tb-profiler version %s" % mp.__version__)
 parser_sub.add_argument('--logging',type=str.upper,default="INFO",choices=["DEBUG","INFO","WARNING","ERROR","CRITICAL"],help='Logging level')
 parser_sub.set_defaults(func=main_list_db)

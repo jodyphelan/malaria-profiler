@@ -37,6 +37,7 @@ def create_resistance_result(
     id: str,
     species: SpeciesPrediction,
     geo_classification: GeoClassificationResult,
+    moi: int,
     genetic_elements: List[Variant],
     qc: Union[BamQC, FastaQC],
     notes: List[str]
@@ -65,6 +66,7 @@ def create_resistance_result(
         'id':id,
         'notes':notes,
         'geo_classification':geo_classification,
+        'moi':moi,
         'dr_variants':dr_variants,
         'other_variants':other_variants,
         'fail_variants':fail_variants,
