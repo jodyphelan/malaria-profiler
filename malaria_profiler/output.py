@@ -27,7 +27,6 @@ def write_outputs(args,result: ProfileResult,filename:str):
     result_dict['filename'] = filename 
     with open(json_output, "w") as json_file:
         json.dump(result_dict, json_file, indent=4)
-
     if args.txt:
         logging.info(f"Writing text file: {text_output}")
         write_text(result,args.conf,text_output)
@@ -151,12 +150,13 @@ def write_text(
         text_strings['species_report'] = pp.dict_list2text([d.prediction_info for d in result.species.species],mappings={"species":"Species","accession":"Accession","ani":"ANI","abundance":"Abundance"},sep=sep)
     
 
-
     if isinstance(result, ProfileResult):
     
         template_string = default_template
-        summary_table = pp.get_dr_summary(result.dr_variants,conf)
-
+        if not result.dr_variants:
+            summary_table = []
+        else:
+            summary_table = pp.get_dr_summary(result.dr_variants,conf)
         text_strings["notes"] = "\n".join(result.notes)
         text_strings["dr_report"] = pp.dict_list2text(summary_table,sep=sep)
         text_strings["dr_var_report"] = pp.object_list2text(result.dr_variants,mappings={"pos":"Genome Position","gene_id":"Locus Tag",'gene_name':'Gene name',"type":"Variant type","change":"Change","freq":"Estimated fraction","drugs.drug":"Drug"},sep=sep)
@@ -170,7 +170,6 @@ def write_text(
 
     else:
         template_string = species_template
-
     if sep=="\t":
         text_strings["sep"] = ": "
     else:
