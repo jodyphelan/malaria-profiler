@@ -279,7 +279,7 @@ def main_update_db(args):
         
     pp.logging.info('\nCreating species DB')
     os.chdir('species')
-    pp.run_cmd('malaria-profiler create_species_db -p malaria-db --sourmash_db plasmodium.sbt.zip --accessions species_info.csv --load')
+    pp.run_cmd('malaria-profiler create_species_db --force -p malaria-db --sourmash_db plasmodium.sbt.zip --accessions species_info.csv --load')
     os.chdir('../')
     
     dirs = [d for d in os.listdir() if os.path.isdir(d) and d!="species"]
