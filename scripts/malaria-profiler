@@ -237,7 +237,7 @@ def get_input_filename(args):
 def create_species_db(args):
     extra_files = {
         "sourmash_db":args.sourmash_db,
-        "sourmash_db_info":args.accessions
+        "accessions":args.accessions
     }
     pp.create_species_db(args,extra_files = extra_files,db_dir=args.db_dir)
 
