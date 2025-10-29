@@ -18,7 +18,7 @@ def get_full_resistance_mutation_report(args: argparse.Namespace, variants: list
                 "depth":variants[(gene,var)].depth if found else 0,
             })
     print(full_variant_report)
-    quit()
+    # quit()
     
 
 def process_args(args: argparse.Namespace) -> None:
