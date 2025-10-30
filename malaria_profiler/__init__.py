@@ -5,7 +5,7 @@ from .speciation import *
 from .geo_classifier import *
 from .moi import *
 from pathogenprofiler.variant_calling import VariantCaller
-__version__="0.0.9"
+__version__="0.0.10"
 
 
 
