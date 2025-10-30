@@ -10,22 +10,29 @@ from tqdm import tqdm
 import json
 import jinja2
 import logging
+from .models import ProfileResult, SpeciesResult
+from pathogenprofiler.models import BamQC
+from typing import Optional, List, Tuple
 
 
-def write_outputs(args,results):
+def write_outputs(args,result: ProfileResult,filename:str):
     logging.info("\nWriting outputs")
+    logging.info("---------------")
     json_output = args.dir+"/"+args.prefix+".results.json"
     text_output = args.dir+"/"+args.prefix+".results.txt"
     csv_output = args.dir+"/"+args.prefix+".results.csv"
-    extra_columns = [x.lower() for x in args.add_columns.split(",")] if args.add_columns else []
     logging.info(f"Writing json file: {json_output}")
-    json.dump(results,open(json_output,"w"))
+
+    result_dict = result.model_dump()
+    result_dict['filename'] = filename 
+    with open(json_output, "w") as json_file:
+        json.dump(result_dict, json_file, indent=4)
     if args.txt:
         logging.info(f"Writing text file: {text_output}")
-        write_text(results,args.conf,text_output,extra_columns)
+        write_text(result,args.conf,text_output)
     if args.csv:
         logging.info(f"Writing csv file: {csv_output}")
-        write_text(results,args.conf,csv_output,extra_columns)
+        write_text(result,args.conf,csv_output,sep=",")
 
 
 
@@ -39,16 +46,23 @@ Summary
 -------
 ID{{d['sep']}}{{d['id']}}
 Date{{d['sep']}}{{d['date']}}
+Filename{{d['sep']}}{{d['filename']}}
 
 Species report
 -----------------
 {{d['species_report']}}
 
-{%- if 'geoclassification' in d %}
+{% if 'geographic_report' in d %}
 Geoclassification report
 -----------------
-{{d['geoclassification']}}
+{{d['geographic_report']}}
 {% endif %}
+
+{%- if 'moi' in d %}
+Multiplicity of infection report
+-----------------
+Estimated multiplicity of infection: {{d['moi']}}
+{% endif -%}
 
 {% if  'dr_report' in d %}
 Resistance report
@@ -80,7 +94,7 @@ Analysis pipeline specifications
 --------------------------------
 Pipeline version{{d['sep']}}{{d['version']}}
 Species Database version{{d['sep']}}{{d['species_db_version']}}
-Resistance Database version{{d['sep']}}{{d['resistance_db_version']}}
+Resistance Database version{{d['sep']}}{{d['db_version']}}
 
 {{d['pipeline']}}
 """
@@ -95,6 +109,7 @@ Summary
 -------
 ID{{d['sep']}}{{d['id']}}
 Date{{d['sep']}}{{d['date']}}
+Filename{{d['sep']}}{{d['filename']}}
 
 Species report
 -----------------
@@ -116,7 +131,54 @@ def load_text(text_strings,template = None,file_template=None):
     t =  jinja2.Template(template)
     return t.render(d=text_strings)
 
-def write_text(json_results,conf,outfile,columns = None,sep="\t",template_file=None):
+def write_text(
+        result: ProfileResult,
+        conf: dict,
+        outfile: str,
+        sep: str ="\t",
+        template_file: str = None,
+        filename: str = ""
+    ):
+    text_strings = {}
+    text_strings["id"] = result.id
+    text_strings["date"] = time.ctime()
+    text_strings["filename"] = filename 
+    if result.species.prediction_method=='user_defined':
+        text_strings['species_report'] = f'User defined species: {result.species.species[0].species}'
+    else:
+        # raise NotImplemented
+        text_strings['species_report'] = pp.dict_list2text([d.prediction_info for d in result.species.species],mappings={"species":"Species","accession":"Accession","ani":"ANI","abundance":"Abundance"},sep=sep)
+    
+
+    if isinstance(result, ProfileResult):
+    
+        template_string = default_template
+        if not result.dr_variants:
+            summary_table = []
+        else:
+            summary_table = pp.get_dr_summary(result.dr_variants,conf)
+        text_strings["notes"] = "\n".join(result.notes)
+        text_strings["dr_report"] = pp.dict_list2text(summary_table,sep=sep)
+        text_strings["dr_var_report"] = pp.object_list2text(result.dr_variants,mappings={"pos":"Genome Position","gene_id":"Locus Tag",'gene_name':'Gene name',"type":"Variant type","change":"Change","freq":"Estimated fraction","drugs.drug":"Drug"},sep=sep)
+        text_strings["other_var_report"] = pp.object_list2text(result.other_variants,mappings={"pos":"Genome Position","gene_id":"Locus Tag",'gene_name':'Gene name',"type":"Variant type","change":"Change","freq":"Estimated fraction"},sep=sep)
+        text_strings['qc_fail_var_report'] = pp.object_list2text(result.fail_variants,mappings={"pos":"Genome Position","gene_id":"Locus Tag",'gene_name':'Gene name',"type":"Variant type","change":"Change","freq":"Estimated fraction"},sep=sep)
+        if result.geo_classification!=None:
+            text_strings["geographic_report"] = pp.object_list2text(result.geo_classification.probabilities,mappings={"region":"Region","probability":"Probability"},sep=sep)
+        if result.moi!=None:
+            text_strings["moi"] = result.moi['moi']
+        text_strings["coverage_report"] = result.get_qc()
+
+    else:
+        template_string = species_template
+    if sep=="\t":
+        text_strings["sep"] = ": "
+    else:
+        text_strings["sep"] = ","
+
+    with open(outfile,"w") as O:
+        O.write(load_text(text_strings,template_string,template_file))
+
+def _write_text(json_results,conf,outfile,columns = None,sep="\t",template_file=None):
     
     text_strings = {}
     text_strings["id"] = json_results["id"]
@@ -174,7 +236,7 @@ def write_text(json_results,conf,outfile,columns = None,sep="\t",template_file=N
     text_strings["version"] = json_results["software_version"]
     if "species" in json_results:
         text_strings["species_db_version"] = "%(name)s_%(Author)s_%(Date)s" % json_results["species"]["species_db_version"] if (json_results['species'] and ("species_db_version" in json_results['species'])) else "N/A"
-    text_strings["resistance_db_version"] = "%(name)s_%(Author)s_%(Date)s" % json_results["resistance_db_version"] if "resistance_db_version" in json_results else "N/A"
+    text_strings["db_version"] = "%(name)s_%(Author)s_%(Date)s" % json_results["db_version"] if "db_version" in json_results else "N/A"
     if sep=="\t":
         text_strings["sep"] = ": "
     else:
@@ -205,7 +267,7 @@ def write_species_text(json_results,outfile,sep="\t",template_file=None):
 
 
 
-def collate(args):
+def _collate(args):
     # Get a dictionary with the database file: {"ref": "/path/to/fasta" ... etc. }
     
     if args.samples:
@@ -224,11 +286,11 @@ def collate(args):
         # Data has the same structure as the .result.json files
         data = json.load(open(filecheck("%s/%s%s" % (args.dir,s,args.suffix))))
         if "species" in data and data['species']:
-            species[s] = ";".join([d["species"] for d in data["species"]["prediction"]])
+            species[s] = ";".join([d["species"] for d in data["species"]["species"]])
         else:
             species[s] = None
-        sample_data[s]['region_median_depth'] = data["qc"]["region_median_depth"]
-        if "resistance_db_version" in data:
+        sample_data[s]['target_median_depth'] = data["qc"]["target_median_depth"]
+        if "db_version" in data:
             dr_samples.add(s)
         
             for var in data["dr_variants"]:
@@ -241,7 +303,7 @@ def collate(args):
         result = {
             "id": s,
             "species": species[s],
-            "region_median_depth": sample_data[s]['region_median_depth']
+            "target_median_depth": sample_data[s]['target_median_depth']
         }
         for d in sorted(drugs):
             if s in dr_samples:
@@ -262,3 +324,123 @@ def collate(args):
         writer = csv.DictWriter(O,fieldnames=list(results[0]),delimiter=args.sep)
         writer.writeheader()
         writer.writerows(results)
+
+class VariantDB:
+    def __init__(self, json_db: Optional[dict] = None):
+        self.samples2variants = defaultdict(set)
+        self.variant2samples = defaultdict(set)
+        self.variant_frequencies = {}
+        self.samples = list()
+        self.variant_rows = []
+        if json_db:
+            for gene in json_db:
+                for mutation in json_db[gene]:
+                        self.variant2samples[(gene,mutation)] = set()
+
+    def add_result(self, result: ProfileResult) -> None:
+        self.samples.append(result.id)
+        for var in result.dr_variants + result.other_variants:
+            key = (result.id,var.gene_name,var.change)
+            self.variant_frequencies[key] = var.freq
+            key = (var.gene_name,var.change)
+            self.variant2samples[key].add(result.id)
+            self.samples2variants[result.id].add(key)
+            d = var.model_dump()
+            d['sample'] = result.id
+            self.variant_rows.append(d)
+    def get_frequency(self,key: Tuple[str,str,str]) -> float:
+        return self.variant_frequencies.get(key,0.0)
+    def get_variant_list(self) -> List[Tuple[str,str]]:
+        return list(self.variant2samples.keys())
+    def write_dump(self,filename: str) -> None:
+        with open(filename,"w") as O:
+            fields = ["sample","gene_name","change","freq","type"]
+            writer = csv.DictWriter(O,fieldnames=fields)
+            writer.writeheader()
+            for row in self.variant_rows:
+                d = {k:row[k] for k in fields}
+                writer.writerow(d)
+
+def collate(args):
+    # Get a dictionary with the database file: {"ref": "/path/to/fasta" ... etc. }
+    
+    if args.samples:
+        samples = [x.rstrip() for x in open(args.samples).readlines()]
+    else:
+        samples = [x.replace(args.suffix,"") for x in os.listdir(args.dir) if x[-len(args.suffix):]==args.suffix]
+
+    if len(samples)==0:
+        pp.logging.info(f"\nNo result files found in directory '{args.dir}'. Do you need to specify '--dir'?\n")
+        quit(0)
+
+    # Loop through the sample result files    
+    variant_db = VariantDB()
+    rows = []
+    drug_resistance_results = []
+    drug_missing_variants = defaultdict(set)
+    for s in tqdm(samples):
+        # Data has the same structure as the .result.json files
+        data = json.load(open(filecheck("%s/%s%s" % (args.dir,s,args.suffix))))
+        if data['result_type']=='Species':
+            result = SpeciesResult(**data)
+        else:
+            result = ProfileResult(**data)
+        row = {
+            'id': s
+        }
+        
+        top_species_hit = result.species.species[0] if len(result.species.species)>0 else None
+        if top_species_hit:
+            row['species'] =  top_species_hit.species
+        else:
+            row['species'] =  None
+        if isinstance(result, ProfileResult):
+            variant_db.add_result(result)
+            row['geographic_source'] = [x.region for x in sorted(result.geo_classification.probabilities,key=lambda x:x.probability,reverse=True)][0]
+            row['geographic_source_proba'] = [round(x.probability,2) for x in sorted(result.geo_classification.probabilities,key=lambda x:x.probability,reverse=True)][0]
+            if isinstance(result.qc, BamQC):
+                row['median_target_depth'] = result.qc.target_median_depth
+            else:
+                row['median_target_depth'] = None
+            for var in result.dr_variants:
+                for d in var.drugs:
+                    drug_resistance_results.append({
+                        'id': s,
+                        'drug': d['drug'],
+                        'var': var.get_str(),
+                    })
+
+            for var in result.qc.missing_positions:
+                for ann in var.annotation:
+                    if ann["type"]=="drug_resistance":
+                        drug_missing_variants[s].add(ann['drug'])
+
+            row['missing_positions'] = True if len(drug_missing_variants[s]) else False
+        rows.append(row) 
+
+    
+    
+
+
+    drugs = sorted(list(set([x['drug'] for x in drug_resistance_results])))
+
+
+    for row in rows:
+        for drug in drugs:
+            row[drug] = "; ".join([x['var'] for x in drug_resistance_results if x['id']==row['id'] and x['drug']==drug])
+            if drug in drug_missing_variants[row['id']]:
+                row[drug] = "*"+row[drug]
+
+
+    
+    if args.format=="txt":
+        args.sep = "\t"
+    else:
+        args.sep = ","
+
+    with open(args.outfile,"w") as O:
+        writer = csv.DictWriter(O,fieldnames=list(rows[0]),delimiter=args.sep,extrasaction='ignore')
+        writer.writeheader()
+        writer.writerows(rows)
+
+    variant_db.write_dump(args.outfile + ".variants.csv")
