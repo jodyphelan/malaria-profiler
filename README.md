@@ -15,8 +15,8 @@ conda create --name malaria-profiler --file macos.env.txt
 
 # Then the following commands on all platforms
 conda activate malaria-profiler
-pip install git+https://github.com/jodyphelan/malaria-profiler.git
-pip install git+https://github.com/jodyphelan/pathogen-profiler.git
+pip install git+https://github.com/jodyphelan/malaria-profiler.git@dev
+pip install git+https://github.com/jodyphelan/pathogen-profiler.git@dev
 malaria-profiler update_db
 ```
 
@@ -24,8 +24,8 @@ malaria-profiler update_db
 
 ```
 conda activate malaria-profiler
-pip install --force-reinstall git+https://github.com/jodyphelan/malaria-profiler.git
-pip install --force-reinstall git+https://github.com/jodyphelan/pathogen-profiler.git
+pip install --force-reinstall git+https://github.com/jodyphelan/malaria-profiler.git@dev
+pip install --force-reinstall git+https://github.com/jodyphelan/pathogen-profiler.git@dev
 ```
 
 ## Usage
