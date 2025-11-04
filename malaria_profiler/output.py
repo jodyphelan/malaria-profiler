@@ -143,8 +143,9 @@ def write_text(
     text_strings["id"] = result.id
     text_strings["date"] = time.ctime()
     text_strings["filename"] = filename 
+
     if result.species.prediction_method=='user_defined':
-        text_strings['species_report'] = f'User defined species: {result.species.species[0].species}'
+        text_strings['species_report'] = f'User defined species: {result.species.taxa[0].species}'
     else:
         # raise NotImplemented
         text_strings['species_report'] = pp.dict_list2text([d.prediction_info for d in result.species.species],mappings={"species":"Species","accession":"Accession","ani":"ANI","abundance":"Abundance"},sep=sep)

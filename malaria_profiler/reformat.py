@@ -42,6 +42,7 @@ def create_resistance_result(
     qc: Union[BamQC, FastaQC],
     notes: List[str]
 ) -> ProfileResult:
+
     for var in genetic_elements:
         var.convert_to_dr_element()
     
@@ -83,6 +84,8 @@ def create_species_result(
     qc: Union[FastqQC, FastaQC]
     
 ) -> SpeciesResult:
+    print(species)
+    quit()
     args.conf = get_db(args.software_name,args.species_db)
     pipeline = Pipeline(
         software_version=args.version,
